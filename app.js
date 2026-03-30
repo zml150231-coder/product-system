@@ -26,8 +26,7 @@ function esc(value) {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0");
-
-  const prefix = `${year}${month}`; // 例如 202603
+  const prefix = `${year}${month}`;
 
   db.get(
     "SELECT productCode FROM products WHERE productCode LIKE ? ORDER BY productCode DESC LIMIT 1",
@@ -36,7 +35,6 @@ function esc(value) {
       if (err) return callback(err);
 
       let seq = 1;
-
       if (row && row.productCode) {
         const last = parseInt(row.productCode.slice(-3), 10);
         if (!isNaN(last)) {
@@ -1150,7 +1148,7 @@ app.get("/form", checkLogin, (req, res) => {
 
 // 保存新产品
 app.post("/save", checkLogin, upload.single("photo"), (req, res) => {
-   const d = req.body;
+  const d = req.body;
   const u = req.session.user;
   const photoPath = req.file ? req.file.filename : "";
 
@@ -1161,67 +1159,108 @@ app.post("/save", checkLogin, upload.single("photo"), (req, res) => {
 
     d.productCode = autoCode;
 
-  const sql = `
-    INSERT INTO products (
-      formName, productName, productCode, exchangeRate, purchaseCost, commissionRate,
-      fenxiaoPrice, adRate, profitCostDiff, profitRate1,
-      sellingPriceUsd, sellingPriceRmb, profitSellDiff, profitRate2,
-      remark, packageType,
-      volumeWeight6000, volumeWeight5000, actualWeight, lengthCm, widthCm, heightCm,
-      expressFee, expressProfit, expressProfitRate,
-      airFee, airProfit, airProfitRate,
-      seaFee, seaProfit, seaProfitRate,
-      expressWeightQty, expressUnitPrice, expressTax, expressTotalPrice,
-      airWeightQty, airUnitPrice, airTax, airTotalPrice,
-      seaWeightQty, seaUnitPrice, seaTax, seaTotalPrice,
-      fbaFeeRmb, commissionRmb, returnCostRmb, warehouseUsd, deliveryUsd, adCostRmb,
-      photoPath, ownerUserId, ownerUsername, lastEditedByUserId, lastEditedByUsername,
-      createdAt, updatedAt
-    ) VALUES (
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?,
-      ?, ?, ?, ?,
-      ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?,
-      ?, ?, ?,
-      ?, ?, ?,
-      ?, ?, ?, ?,
-      ?, ?, ?, ?,
-      ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?,
-      datetime('now','localtime'), datetime('now','localtime')
-    )
-  `;
+    const sql = `
+      INSERT INTO products (
+        formName, productName, productCode, exchangeRate, purchaseCost, commissionRate,
+        fenxiaoPrice, adRate, profitCostDiff, profitRate1,
+        sellingPriceUsd, sellingPriceRmb, profitSellDiff, profitRate2,
+        remark, packageType,
+        volumeWeight6000, volumeWeight5000, actualWeight, lengthCm, widthCm, heightCm,
+        expressFee, expressProfit, expressProfitRate,
+        airFee, airProfit, airProfitRate,
+        seaFee, seaProfit, seaProfitRate,
+        expressWeightQty, expressUnitPrice, expressTax, expressTotalPrice,
+        airWeightQty, airUnitPrice, airTax, airTotalPrice,
+        seaWeightQty, seaUnitPrice, seaTax, seaTotalPrice,
+        fbaFeeRmb, commissionRmb, returnCostRmb, warehouseUsd, deliveryUsd, adCostRmb,
+        photoPath, ownerUserId, ownerUsername, lastEditedByUserId, lastEditedByUsername,
+        createdAt, updatedAt
+      ) VALUES (
+        ?, ?, ?, ?, ?, ?,
+        ?, ?, ?, ?,
+        ?, ?, ?, ?,
+        ?, ?,
+        ?, ?, ?, ?, ?, ?,
+        ?, ?, ?,
+        ?, ?, ?,
+        ?, ?, ?,
+        ?, ?, ?, ?,
+        ?, ?, ?, ?,
+        ?, ?, ?, ?,
+        ?, ?, ?, ?, ?, ?,
+        ?, ?, ?, ?, ?,
+        datetime('now','localtime'), datetime('now','localtime')
+      )
+    `;
 
-  const values = [
-    d.formName || "", d.productName || "", d.productCode || "", d.exchangeRate || "", d.purchaseCost || "", d.commissionRate || "",
-    d.fenxiaoPrice || "", d.adRate || "", d.profitCostDiff || "", d.profitRate1 || "",
-    d.sellingPriceUsd || "", d.sellingPriceRmb || "", d.profitSellDiff || "", d.profitRate2 || "",
-    d.remark || "", d.packageType || "",
-    d.volumeWeight6000 || "", d.volumeWeight5000 || "", d.actualWeight || "", d.lengthCm || "", d.widthCm || "", d.heightCm || "",
-    d.expressFee || "", d.expressProfit || "", d.expressProfitRate || "",
-    d.airFee || "", d.airProfit || "", d.airProfitRate || "",
-    d.seaFee || "", d.seaProfit || "", d.seaProfitRate || "",
-    d.expressWeightQty || "", d.expressUnitPrice || "", d.expressTax || "", d.expressTotalPrice || "",
-    d.airWeightQty || "", d.airUnitPrice || "", d.airTax || "", d.airTotalPrice || "",
-    d.seaWeightQty || "", d.seaUnitPrice || "", d.seaTax || "", d.seaTotalPrice || "",
-    d.fbaFeeRmb || "", d.commissionRmb || "", d.returnCostRmb || "", d.warehouseUsd || "", d.deliveryUsd || "", d.adCostRmb || "",
-    photoPath, u.id, u.username, u.id, u.username
-  ];
+    const values = [
+      d.formName || "",
+      d.productName || "",
+      d.productCode || "",
+      d.exchangeRate || "",
+      d.purchaseCost || "",
+      d.commissionRate || "",
+      d.fenxiaoPrice || "",
+      d.adRate || "",
+      d.profitCostDiff || "",
+      d.profitRate1 || "",
+      d.sellingPriceUsd || "",
+      d.sellingPriceRmb || "",
+      d.profitSellDiff || "",
+      d.profitRate2 || "",
+      d.remark || "",
+      d.packageType || "",
+      d.volumeWeight6000 || "",
+      d.volumeWeight5000 || "",
+      d.actualWeight || "",
+      d.lengthCm || "",
+      d.widthCm || "",
+      d.heightCm || "",
+      d.expressFee || "",
+      d.expressProfit || "",
+      d.expressProfitRate || "",
+      d.airFee || "",
+      d.airProfit || "",
+      d.airProfitRate || "",
+      d.seaFee || "",
+      d.seaProfit || "",
+      d.seaProfitRate || "",
+      d.expressWeightQty || "",
+      d.expressUnitPrice || "",
+      d.expressTax || "",
+      d.expressTotalPrice || "",
+      d.airWeightQty || "",
+      d.airUnitPrice || "",
+      d.airTax || "",
+      d.airTotalPrice || "",
+      d.seaWeightQty || "",
+      d.seaUnitPrice || "",
+      d.seaTax || "",
+      d.seaTotalPrice || "",
+      d.fbaFeeRmb || "",
+      d.commissionRmb || "",
+      d.returnCostRmb || "",
+      d.warehouseUsd || "",
+      d.deliveryUsd || "",
+      d.adCostRmb || "",
+      photoPath,
+      u.id,
+      u.username,
+      u.id,
+      u.username
+    ];
 
-  db.run(sql, values, function(err) {
-    if (err) {
-      return res.send("保存失败：" + err.message);
-    }
+    db.run(sql, values, function (err) {
+      if (err) {
+        return res.send("保存失败：" + err.message);
+      }
 
-    db.run(
-      "UPDATE users SET last_edit_at = datetime('now','localtime') WHERE id = ?",
-      [u.id]
-    );
+      db.run(
+        "UPDATE users SET last_edit_at = datetime('now','localtime') WHERE id = ?",
+        [u.id]
+      );
 
-    res.redirect("/detail/" + this.lastID);
+      res.redirect("/detail/" + this.lastID);
     });
   });
 });

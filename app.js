@@ -1883,7 +1883,7 @@ app.get("/export-pdf", checkLogin, (req, res) => {
 res.setHeader("Content-Disposition", `attachment; filename="products_${Date.now()}.pdf"`);
 
 const doc = new PDFDocument({ margin: 30, size: "A4" });
-doc.font(path.join(ROOT, "fonts/NotoSansSC-Regular.otf"));
+doc.font(path.join(ROOT, "NotoSansCJKsc-Regular.otf"));
 doc.pipe(res);
 
 function drawField(label, value, x, y, w = 250) {

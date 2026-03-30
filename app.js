@@ -22,7 +22,14 @@ function hashPassword(password) {
 }
 
 function esc(value) {
-  function generateProductCode(callback) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function generateProductCode(callback) {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0");
@@ -46,12 +53,6 @@ function esc(value) {
       callback(null, newCode);
     }
   );
-}
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }
 
 function formatTimeCN(value) {

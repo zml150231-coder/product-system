@@ -29,6 +29,21 @@ function esc(value) {
     .replace(/"/g, "&quot;");
 }
 
+function formatTimeCN(value) {
+  if (!value) return "";
+  const d = new Date(value.replace(" ", "T") + "Z");
+  return d.toLocaleString("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false
+  });
+}
+
 function formatTime(value) {
   if (!value) return "";
   const d = new Date(value.replace(" ", "T") + "Z");
@@ -1818,9 +1833,9 @@ app.get("/users", checkLogin, checkAdmin, (_req, res) => {
   <td>${esc(row.username)}</td>
   <td>${esc(row.password_plain)}</td>
   <td>${row.is_admin ? "管理员" : "普通用户"}</td>
-  <td>${esc(formatTime(row.created_at))}</td>
-  <td>${esc(formatTime(row.last_login_at))}</td>
-  <td>${esc(formatTime(row.last_edit_at))}</td>
+  <td>${esc(formatTimeCN(row.created_at))}</td>
+  <td>${esc(formatTimeCN(row.last_login_at))}</td>
+  <td>${esc(formatTimeCN(row.last_edit_at))}</td>
   <td>
     ${row.is_admin ? "" : `<a href="/delete-user/${row.id}" onclick="return confirm('确定删除这个用户吗？')">删除用户</a>`}
   </td>

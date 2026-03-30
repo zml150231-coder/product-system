@@ -127,8 +127,8 @@ db.serialize(() => {
       lastEditedByUserId INTEGER,
       lastEditedByUsername TEXT,
 
-      createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
-      updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
+     createdAt TEXT DEFAULT (datetime('now','localtime')),
+     updatedAt TEXT DEFAULT (datetime('now','localtime'))
     )
   `);
 

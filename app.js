@@ -22,6 +22,33 @@ function hashPassword(password) {
 }
 
 function esc(value) {
+  function generateProductCode(callback) {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+
+  const prefix = `${year}${month}`; // 例如 202603
+
+  db.get(
+    "SELECT productCode FROM products WHERE productCode LIKE ? ORDER BY productCode DESC LIMIT 1",
+    [`${prefix}%`],
+    (err, row) => {
+      if (err) return callback(err);
+
+      let seq = 1;
+
+      if (row && row.productCode) {
+        const last = parseInt(row.productCode.slice(-3), 10);
+        if (!isNaN(last)) {
+          seq = last + 1;
+        }
+      }
+
+      const newCode = `${prefix}${String(seq).padStart(3, "0")}`;
+      callback(null, newCode);
+    }
+  );
+}
   return String(value ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -668,7 +695,7 @@ function renderFormPage({ mode, user, row = {} }) {
           </tr>
           <tr>
             <td class="label">产品编号</td>
-            <td><input class="input" type="text" name="productCode" id="productCode" value="${esc(row.productCode || "")}" /></td>
+            <td><input class="input readonly-gray" type="text" name="productCode" id="productCode" value="${esc(row.productCode || "自动生成")}" readonly /></td>
             <td class="label">汇率</td>
             <td>
               <div style="display:flex;gap:8px;">
@@ -681,13 +708,13 @@ function renderFormPage({ mode, user, row = {} }) {
             <td class="label">采购成本(RMB)*</td>
             <td><input class="input calc" type="number" step="0.001" name="purchaseCost" id="purchaseCost" value="${esc(row.purchaseCost || "")}" /></td>
             <td class="label">佣金(%)</td>
-            <td><input class="input calc" type="number" step="0.001" name="commissionRate" id="commissionRate" value="${esc(row.commissionRate || "")}" /></td>
+            <td><input class="input calc" type="number" step="0.001" name="commissionRate" id="commissionRate" value="${esc(row.commissionRate || "15")}" /></td>
           </tr>
           <tr>
             <td class="label">分销价*</td>
             <td><input class="input calc" type="number" step="0.001" name="fenxiaoPrice" id="fenxiaoPrice" value="${esc(row.fenxiaoPrice || "")}" /></td>
             <td class="label">广告费(%)</td>
-            <td><input class="input calc" type="number" step="0.001" name="adRate" id="adRate" value="${esc(row.adRate || "")}" /></td>
+            <td><input class="input calc" type="number" step="0.001" name="adRate" id="adRate" value="${esc(row.adRate || "15")}" /></td>
           </tr>
           <tr>
             <td class="label">分销减采购成本利润*</td>
@@ -1123,9 +1150,16 @@ app.get("/form", checkLogin, (req, res) => {
 
 // 保存新产品
 app.post("/save", checkLogin, upload.single("photo"), (req, res) => {
-  const d = req.body;
+   const d = req.body;
   const u = req.session.user;
   const photoPath = req.file ? req.file.filename : "";
+
+  generateProductCode((codeErr, autoCode) => {
+    if (codeErr) {
+      return res.send("生成产品编号失败：" + codeErr.message);
+    }
+
+    d.productCode = autoCode;
 
   const sql = `
     INSERT INTO products (
@@ -1188,9 +1222,9 @@ app.post("/save", checkLogin, upload.single("photo"), (req, res) => {
     );
 
     res.redirect("/detail/" + this.lastID);
+    });
   });
 });
-
 // 列表
 app.get("/list", checkLogin, (req, res) => {
   const user = req.session.user;

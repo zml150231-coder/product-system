@@ -2145,19 +2145,34 @@ app.get("/users", checkLogin, checkAdmin, (_req, res) => {
               <th>操作</th>
             </tr>
             ${rows.map(row => `
-             <tr>
-  <td>${row.id}</td>
-  <td>${esc(row.username)}</td>
-  <td>${esc(row.password_plain)}</td>
-  <td>${row.is_admin ? "管理员" : "普通用户"}</td>
-  <td>${esc(formatTimeCN(row.created_at))}</td>
-  <td>${esc(formatTimeCN(row.last_login_at))}</td>
-  <td>${esc(formatTimeCN(row.last_edit_at))}</td>
-  <td>
-    ${row.is_admin ? "" : `<a href="/delete-user/${row.id}" onclick="return confirm('确定删除这个用户吗？')">删除用户</a>`}
-  </td>
-</tr>
-            `).join("")}
+  <tr>
+    <td>${row.id}</td>
+    <td>${esc(row.username)}</td>
+    <td>${esc(row.password_plain)}</td>
+    <td>${row.is_admin ? "管理员" : "普通用户"}</td>
+    <td>${esc(row.approval_status || "pending")}</td>
+    <td>${esc(formatTimeCN(row.created_at))}</td>
+    <td>${esc(formatTimeCN(row.last_login_at))}</td>
+    <td>${esc(formatTimeCN(row.last_edit_at))}</td>
+    <td>
+      ${
+        row.is_admin
+          ? ""
+          : row.approval_status === "pending"
+            ? `
+              <a href="/approve-user/${row.id}">✅同意</a>
+              &nbsp;|&nbsp;
+              <a href="/reject-user/${row.id}">❌拒绝</a>
+              &nbsp;|&nbsp;
+              <a href="/delete-user/${row.id}" onclick="return confirm('确定删除该用户吗？')">删除</a>
+            `
+            : `
+              <a href="/delete-user/${row.id}" onclick="return confirm('确定删除该用户吗？')">删除</a>
+            `
+      }
+    </td>
+  </tr>
+`).join("")}
           </table>
         </body>
         </html>

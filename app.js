@@ -29,6 +29,21 @@ function esc(value) {
     .replace(/"/g, "&quot;");
 }
 
+function formatTime(value) {
+  if (!value) return "";
+  const d = new Date(value.replace(" ", "T") + "Z");
+  return d.toLocaleString("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false
+  });
+}
+
 function deletePhotoFile(fileName) {
   if (!fileName) return;
   const filePath = path.join(UPLOAD_DIR, fileName);
@@ -557,7 +572,8 @@ function renderFormPage({ mode, user, row = {} }) {
   <div class="page">
     <div class="button-area">
       ${renderTopButtons(user)}
-      ${isEdit ? `<span style="font-size:13px;color:#444;">创建人：${esc(row.ownerUsername || "")} ｜ 最后编辑人：${esc(row.lastEditedByUsername || "")} ｜ 创建时间：${esc(row.createdAt || "")} ｜ 最后更新时间：${esc(row.updatedAt || "")}</span>` : ""}
+      ${isEdit ? `<span style="font-size:13px;color:#444;">创建人：${esc(row.ownerUsername || "")} ｜ 最后编辑人：${esc(row.lastEditedByUsername || "")} ｜ 创建时间：${esc(formatTime(row.createdAt))}
+最后更新时间：${esc(formatTime(row.updatedAt))}</span>` : ""}
     </div>
 
     <form method="POST" action="${action}" enctype="multipart/form-data">

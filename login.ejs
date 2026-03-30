@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Product Development Record Sheet</title>
+  <style>
+    body {
+      background: white;
+      font-family: Arial;
+      text-align: center;
+      margin-top: 100px;
+    }
+    input {
+      padding: 10px;
+      margin: 10px;
+      width: 250px;
+    }
+    button {
+      padding: 10px 20px;
+      background: #2f6fed;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    a {
+      display: block;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+
+<body>
+
+<h2>登录系统</h2>
+
+<form method="POST" action="/login">
+  <input name="username" placeholder="用户名"><br>
+  <input name="password" type="password" placeholder="密码"><br>
+  <button type="submit">登录</button>
+</form>
+
+<a href="/register">注册账号</a>
+
+</body>
+</html>

@@ -1818,9 +1818,9 @@ app.get("/users", checkLogin, checkAdmin, (_req, res) => {
   <td>${esc(row.username)}</td>
   <td>${esc(row.password_plain)}</td>
   <td>${row.is_admin ? "管理员" : "普通用户"}</td>
-  <td>${esc(row.created_at)}</td>
-  <td>${esc(row.last_login_at || "")}</td>
-  <td>${esc(row.last_edit_at || "")}</td>
+  <td>${esc(formatTime(row.created_at))}</td>
+  <td>${esc(formatTime(row.last_login_at))}</td>
+  <td>${esc(formatTime(row.last_edit_at))}</td>
   <td>
     ${row.is_admin ? "" : `<a href="/delete-user/${row.id}" onclick="return confirm('确定删除这个用户吗？')">删除用户</a>`}
   </td>

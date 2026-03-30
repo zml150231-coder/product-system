@@ -677,8 +677,13 @@ function renderFormPage({ mode, user, row = {} }) {
           <tr>
             <td rowspan="8" style="vertical-align: top; background:#efefef;">
               <div class="photo-box" id="photoPreviewBox">
-                ${photoHtml}
-              </div>
+  ${photoHtml}
+</div>
+<div class="upload-row">
+  <label class="small-btn" for="photoInput">上传照片</label>
+  <input id="photoInput" type="file" name="photo" accept="image/*" style="display:none;">
+  <a href="javascript:void(0)" id="deletePhotoBtn" style="color:#d32f2f;text-decoration:none;">删除照片</a>
+</div>
               <div class="upload-row">
                 <label class="small-btn" for="photoInput">上传照片</label>
                 <input id="photoInput" type="file" name="photo" accept="image/*" style="display:none;">

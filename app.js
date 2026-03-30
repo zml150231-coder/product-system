@@ -1299,7 +1299,7 @@ app.get("/list", checkLogin, (req, res) => {
                   <td>${esc(row.purchaseCost)}</td>
                   <td>${esc(row.sellingPriceUsd)}</td>
                   ${user.is_admin ? `<td>${esc(row.ownerUsername)}</td><td>${esc(row.lastEditedByUsername)}</td>` : ""}
-                  <td>${esc(row.updatedAt)}</td>
+                  <td>${esc(formatTime(row.updatedAt))}</td>
                   <td>
                     <a href="/edit/${row.id}">编辑</a>
                     &nbsp;|&nbsp;

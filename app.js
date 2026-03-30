@@ -852,7 +852,7 @@ function renderFormPage({ mode, user, row = {} }) {
           </tr>
           <tr>
             <td class="label">快递</td>
-            <td><input class="input calc" type="number" step="0.001" name="expressWeightQty" id="expressWeightQty" value="${esc(row.expressWeightQty || "")}" /></td>
+            <td><input class="input readonly-gray" type="number" step="0.001" name="expressWeightQty" id="expressWeightQty" value="${esc(row.expressWeightQty || "")}" readonly /></td>
             <td><input class="input calc" type="number" step="0.001" name="expressUnitPrice" id="expressUnitPrice" value="${esc(row.expressUnitPrice || "")}" /></td>
             <td><input class="input calc" type="number" step="0.001" name="expressTax" id="expressTax" value="${esc(row.expressTax || "")}" /></td>
             <td><input class="input readonly-gray" type="number" step="0.001" name="expressTotalPrice" id="expressTotalPrice" value="${esc(row.expressTotalPrice || "")}" /></td>
@@ -860,7 +860,7 @@ function renderFormPage({ mode, user, row = {} }) {
           </tr>
           <tr>
             <td class="label">空运</td>
-            <td><input class="input calc" type="number" step="0.001" name="airWeightQty" id="airWeightQty" value="${esc(row.airWeightQty || "")}" /></td>
+            <td><input class="input readonly-gray" type="number" step="0.001" name="airWeightQty" id="airWeightQty" value="${esc(row.airWeightQty || "")}" readonly /></td>
             <td><input class="input calc" type="number" step="0.001" name="airUnitPrice" id="airUnitPrice" value="${esc(row.airUnitPrice || "")}" /></td>
             <td><input class="input calc" type="number" step="0.001" name="airTax" id="airTax" value="${esc(row.airTax || "")}" /></td>
             <td><input class="input readonly-gray" type="number" step="0.001" name="airTotalPrice" id="airTotalPrice" value="${esc(row.airTotalPrice || "")}" /></td>
@@ -868,7 +868,7 @@ function renderFormPage({ mode, user, row = {} }) {
           </tr>
           <tr>
             <td class="label">海运</td>
-            <td><input class="input calc" type="number" step="0.001" name="seaWeightQty" id="seaWeightQty" value="${esc(row.seaWeightQty || "")}" /></td>
+            <td><input class="input readonly-gray" type="number" step="0.001" name="seaWeightQty" id="seaWeightQty" value="${esc(row.seaWeightQty || "")}" readonly /></td>
             <td><input class="input calc" type="number" step="0.001" name="seaUnitPrice" id="seaUnitPrice" value="${esc(row.seaUnitPrice || "")}" /></td>
             <td><input class="input calc" type="number" step="0.001" name="seaTax" id="seaTax" value="${esc(row.seaTax || "")}" /></td>
             <td><input class="input readonly-gray" type="number" step="0.001" name="seaTotalPrice" id="seaTotalPrice" value="${esc(row.seaTotalPrice || "")}" /></td>
@@ -934,104 +934,142 @@ function renderFormPage({ mode, user, row = {} }) {
       el.value = value.toFixed(digits);
     }
 
-    function calcAll() {
-      const exchangeRate = num("exchangeRate");
-      const purchaseCost = num("purchaseCost");
-      const commissionRate = num("commissionRate");
-      const fenxiaoPrice = num("fenxiaoPrice");
-      const adRate = num("adRate");
-      const sellingPriceUsd = num("sellingPriceUsd");
+   function calcAll() {
+  const exchangeRate = num("exchangeRate");
+  const purchaseCost = num("purchaseCost");
+  const commissionRate = num("commissionRate");
+  const fenxiaoPrice = num("fenxiaoPrice");
+  const adRate = num("adRate");
+  const sellingPriceUsd = num("sellingPriceUsd");
 
-      const length = num("lengthCm");
-      const width = num("widthCm");
-      const height = num("heightCm");
+  const length = num("lengthCm");
+  const width = num("widthCm");
+  const height = num("heightCm");
+  const actualWeight = num("actualWeight");
 
-      const expressWeightQty = num("expressWeightQty");
-      const expressUnitPrice = num("expressUnitPrice");
-      const expressTax = num("expressTax");
+  const expressUnitPrice = num("expressUnitPrice");
+  const expressTax = $("expressTax").value === "" ? 1 : num("expressTax");
 
-      const airWeightQty = num("airWeightQty");
-      const airUnitPrice = num("airUnitPrice");
-      const airTax = num("airTax");
+  const airUnitPrice = num("airUnitPrice");
+  const airTax = $("airTax").value === "" ? 1 : num("airTax");
 
-      const seaWeightQty = num("seaWeightQty");
-      const seaUnitPrice = num("seaUnitPrice");
-      const seaTax = num("seaTax");
+  const seaUnitPrice = num("seaUnitPrice");
+  const seaTax = $("seaTax").value === "" ? 1 : num("seaTax");
 
-      const fbaFeeRmb = num("fbaFeeRmb");
-      const returnCostRmb = num("returnCostRmb");
-      const warehouseUsd = num("warehouseUsd");
-      const deliveryUsd = num("deliveryUsd");
+  const fbaFeeRmb = num("fbaFeeRmb");
+  const returnCostRmb = num("returnCostRmb");
+  const warehouseUsd = num("warehouseUsd");
+  const deliveryUsd = num("deliveryUsd");
 
-      const sellingPriceRmb = sellingPriceUsd * exchangeRate;
-      setVal("sellingPriceRmb", sellingPriceRmb);
+  // 1) 销售价 RMB
+  const sellingPriceRmb = sellingPriceUsd * exchangeRate;
+  setVal("sellingPriceRmb", sellingPriceRmb);
 
-      const profitCostDiff = fenxiaoPrice - purchaseCost;
-      setVal("profitCostDiff", profitCostDiff);
+  // 2) 分销利润
+  const profitCostDiff = fenxiaoPrice - purchaseCost;
+  setVal("profitCostDiff", profitCostDiff);
 
-      const profitRate1 = fenxiaoPrice ? (profitCostDiff / fenxiaoPrice) * 100 : 0;
-      setVal("profitRate1", profitRate1);
+  const profitRate1 = fenxiaoPrice ? (profitCostDiff / fenxiaoPrice) * 100 : 0;
+  setVal("profitRate1", profitRate1);
 
-      const profitSellDiff = sellingPriceRmb - fenxiaoPrice;
-      setVal("profitSellDiff", profitSellDiff);
+  const profitSellDiff = sellingPriceRmb - fenxiaoPrice;
+  setVal("profitSellDiff", profitSellDiff);
 
-      const profitRate2 = sellingPriceRmb ? (profitSellDiff / sellingPriceRmb) * 100 : 0;
-      setVal("profitRate2", profitRate2);
+  const profitRate2 = sellingPriceRmb ? (profitSellDiff / sellingPriceRmb) * 100 : 0;
+  setVal("profitRate2", profitRate2);
 
-      const volume6000 = (length * width * height) / 6000;
-      const volume5000 = (length * width * height) / 5000;
-      setVal("volumeWeight6000", volume6000);
-      setVal("volumeWeight5000", volume5000);
+  // 3) 体积重
+  const volume6000 = (length * width * height) / 6000;
+  const volume5000 = (length * width * height) / 5000;
+  setVal("volumeWeight6000", volume6000);
+  setVal("volumeWeight5000", volume5000);
 
-      const expressTotalPrice = expressWeightQty * expressUnitPrice + expressTax;
-      const airTotalPrice = airWeightQty * airUnitPrice + airTax;
-      const seaTotalPrice = seaWeightQty * seaUnitPrice + seaTax;
+  // 4) 计重数量
+  // 快递 = 体重1
+  // 空运 = 体重1
+  // 海运 = 体重2
+  const weight1 = Math.max(actualWeight, volume6000);
+  const weight2 = Math.max(actualWeight, volume5000);
 
-      setVal("expressTotalPrice", expressTotalPrice);
-      setVal("airTotalPrice", airTotalPrice);
-      setVal("seaTotalPrice", seaTotalPrice);
+  setVal("expressWeightQty", weight1);
+  setVal("airWeightQty", weight1);
+  setVal("seaWeightQty", weight2);
 
-      const commissionRmb = sellingPriceRmb * commissionRate / 100;
-      const adCostRmb = sellingPriceRmb * adRate / 100;
-      setVal("commissionRmb", commissionRmb);
-      setVal("adCostRmb", adCostRmb);
+  // 5) 价格 = 计重数量 * 单价 * 税费
+  const expressTotalPrice = weight1 * expressUnitPrice * expressTax;
+  const airTotalPrice = weight1 * airUnitPrice * airTax;
+  const seaTotalPrice = weight2 * seaUnitPrice * seaTax;
 
-      const commonCost = purchaseCost + fbaFeeRmb + commissionRmb + returnCostRmb + adCostRmb + (warehouseUsd * exchangeRate) + (deliveryUsd * exchangeRate);
+  setVal("expressTotalPrice", expressTotalPrice);
+  setVal("airTotalPrice", airTotalPrice);
+  setVal("seaTotalPrice", seaTotalPrice);
 
-      const expressFee = num("expressFee");
-      const airFee = num("airFee");
-      const seaFee = num("seaFee");
+  // 6) 上面运输方式后面的快递/空运/海运 = 下面的价格
+  setVal("expressFee", expressTotalPrice);
+  setVal("airFee", airTotalPrice);
+  setVal("seaFee", seaTotalPrice);
 
-      const expressProfit = sellingPriceRmb - commonCost - expressFee;
-      const airProfit = sellingPriceRmb - commonCost - airFee;
-      const seaProfit = sellingPriceRmb - commonCost - seaFee;
+  // 7) 佣金 = 销售价 * 佣金% * 汇率
+  const commissionRmb = sellingPriceUsd * (commissionRate / 100) * exchangeRate;
+  setVal("commissionRmb", commissionRmb);
 
-      setVal("expressProfit", expressProfit);
-      setVal("airProfit", airProfit);
-      setVal("seaProfit", seaProfit);
+  // 8) 广告费RMB = 广告费% * 销售价格USD
+  const adCostRmb = sellingPriceUsd * (adRate / 100);
+  setVal("adCostRmb", adCostRmb);
 
-      const expressProfitRate = sellingPriceRmb ? (expressProfit / sellingPriceRmb) * 100 : 0;
-      const airProfitRate = sellingPriceRmb ? (airProfit / sellingPriceRmb) * 100 : 0;
-      const seaProfitRate = sellingPriceRmb ? (seaProfit / sellingPriceRmb) * 100 : 0;
+  // 9) 公共成本
+  const commonCost =
+    purchaseCost +
+    fbaFeeRmb +
+    commissionRmb +
+    returnCostRmb +
+    adCostRmb +
+    warehouseUsd +
+    deliveryUsd;
 
-      setVal("expressProfitRate", expressProfitRate);
-      setVal("airProfitRate", airProfitRate);
-      setVal("seaProfitRate", seaProfitRate);
-    }
+  // 10) 各运输利润
+  const expressProfit = sellingPriceRmb - commonCost - expressTotalPrice;
+  const airProfit = sellingPriceRmb - commonCost - airTotalPrice;
+  const seaProfit = sellingPriceRmb - commonCost - seaTotalPrice;
 
-    async function fetchRate() {
+  setVal("expressProfit", expressProfit);
+  setVal("airProfit", airProfit);
+  setVal("seaProfit", seaProfit);
+
+  const expressProfitRate = sellingPriceRmb ? (expressProfit / sellingPriceRmb) * 100 : 0;
+  const airProfitRate = sellingPriceRmb ? (airProfit / sellingPriceRmb) * 100 : 0;
+  const seaProfitRate = sellingPriceRmb ? (seaProfit / sellingPriceRmb) * 100 : 0;
+
+  setVal("expressProfitRate", expressProfitRate);
+  setVal("airProfitRate", airProfitRate);
+  setVal("seaProfitRate", seaProfitRate);
+
+  // 11) 税费默认 1
+  if ($("expressTax").value === "") $("expressTax").value = "1.000";
+  if ($("airTax").value === "") $("airTax").value = "1.000";
+  if ($("seaTax").value === "") $("seaTax").value = "1.000";
+
+  // 12) 保存单价到浏览器，下次默认带出
+  if ($("expressUnitPrice").value !== "") localStorage.setItem("expressUnitPrice", $("expressUnitPrice").value);
+  if ($("airUnitPrice").value !== "") localStorage.setItem("airUnitPrice", $("airUnitPrice").value);
+  if ($("seaUnitPrice").value !== "") localStorage.setItem("seaUnitPrice", $("seaUnitPrice").value);
+}
+
+async function fetchRate() {
   try {
-    const resp = await fetch("https://api.frankfurter.dev/v2/rates?base=USD&quotes=CNY");
-    const data = await resp.json();
+    const res = await fetch("https://open.er-api.com/v6/latest/USD");
+    const data = await res.json();
 
-    if (Array.isArray(data) && data.length > 0 && data[0].rate) {
-      document.getElementById("exchangeRate").value = Number(data[0].rate).toFixed(4);
+    if (data && data.rates && data.rates.CNY) {
+      const realRate = Number(data.rates.CNY);
+      const finalRate = realRate * 0.9;
+      setVal("exchangeRate", finalRate, 4);
       calcAll();
     } else {
-      alert("未获取到汇率");
+      alert("获取汇率失败");
     }
   } catch (err) {
-    alert("获取汇率失败");
+    alert("获取汇率失败：" + err.message);
   }
 }
 
@@ -1050,15 +1088,30 @@ function renderFormPage({ mode, user, row = {} }) {
     }
 
     document.querySelectorAll(".calc").forEach(el => {
-      el.addEventListener("input", calcAll);
-    });
+  el.addEventListener("input", calcAll);
+});
 
-    window.addEventListener("load", () => {
-      calcAll();
-      if (!$("exchangeRate").value) {
-        fetchRate();
-      }
-    });
+window.addEventListener("DOMContentLoaded", () => {
+  if (!$("expressUnitPrice").value) {
+    $("expressUnitPrice").value = localStorage.getItem("expressUnitPrice") || "";
+  }
+  if (!$("airUnitPrice").value) {
+    $("airUnitPrice").value = localStorage.getItem("airUnitPrice") || "";
+  }
+  if (!$("seaUnitPrice").value) {
+    $("seaUnitPrice").value = localStorage.getItem("seaUnitPrice") || "";
+  }
+
+  if (!$("expressTax").value) $("expressTax").value = "1";
+  if (!$("airTax").value) $("airTax").value = "1";
+  if (!$("seaTax").value) $("seaTax").value = "1";
+
+  calcAll();
+
+  if (!$("exchangeRate").value) {
+    fetchRate();
+  }
+});
   </script>
 </body>
 </html>

@@ -2103,20 +2103,11 @@ app.get("/reject-user/:id", checkAdmin, (req, res) => {
   );
 });
 
-<td>
-  ${
-    u.approval_status === "pending"
-      ? `
-      <a href="/approve-user/${u.id}">✅同意</a>
-      <a href="/reject-user/${u.id}">❌拒绝</a>
-      `
-      : u.approval_status
-  }
-</td>
 
+  
 app.get("/users", checkLogin, checkAdmin, (_req, res) => {
   db.all(
-    "SELECT id, username, password_plain, is_admin, created_at, last_login_at, last_edit_at FROM users ORDER BY id ASC",
+   "SELECT id, username, password_plain, is_admin, approval_status, created_at, last_login_at, last_edit_at FROM users ORDER BY id ASC",
     [],
     (err, rows) => {
       if (err) {

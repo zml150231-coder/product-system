@@ -697,7 +697,7 @@ function renderFormPage({ mode, user, row = {} }) {
             <td class="label">汇率</td>
             <td>
               <div style="display:flex;gap:8px;">
-                <input class="input" type="number" step="0.0001" name="exchangeRate" id="exchangeRate" value="${esc(row.exchangeRate || "")}" />
+                <input class="input calc" type="number" step="0.0001" name="exchangeRate" id="exchangeRate" value="${esc(row.exchangeRate || "")}" />
                 <button type="button" class="small-btn" style="width:110px;" onclick="fetchRate()">刷新汇率</button>
               </div>
             </td>

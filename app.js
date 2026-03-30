@@ -1513,7 +1513,7 @@ app.get("/list", checkLogin, (req, res) => {
 
         <table>
           <tr>
-            <th>ID</th>
+            <th>产品图片</th>
             <th>表单名称</th>
             <th>产品名称</th>
             <th>产品编号</th>
@@ -1527,7 +1527,15 @@ app.get("/list", checkLogin, (req, res) => {
             rows.length > 0
               ? rows.map(row => `
                 <tr>
-                  <td><a href="/detail/${row.id}">${row.id}</a></td>
+                 <td>
+  ${
+    row.photoPath
+      ? `<a href="/detail/${row.id}">
+           <img src="/uploads/${esc(row.photoPath)}" style="width:60px;height:60px;object-fit:cover;border-radius:4px;">
+         </a>`
+      : `<a href="/detail/${row.id}" style="color:#999;text-decoration:none;">无图片</a>`
+  }
+</td>
                   <td><a href="/detail/${row.id}">${esc(row.formName)}</a></td>
                   <td>${esc(row.productName)}</td>
                   <td>${esc(row.productCode)}</td>
@@ -2156,17 +2164,9 @@ app.get("/users", checkLogin, checkAdmin, (_req, res) => {
               <th>最后编辑时间</th>
               <th>操作</th>
             </tr>
-            ${rows.map(row => `
-  <tr>
-    <td>
-  ${
-    row.photoPath
-      ? `<a href="/uploads/${esc(row.photoPath)}" target="_blank">
-           <img src="/uploads/${esc(row.photoPath)}" style="width:60px;height:60px;object-fit:cover;border-radius:4px;">
-         </a>`
-      : `<span style="color:#999;">无图片</span>`
-  }
-</td>
+           ${rows.map(row => `
+<tr>
+    <td>${row.id}</td>
     <td>${esc(row.username)}</td>
     <td>${esc(row.password_plain)}</td>
     <td>${row.is_admin ? "管理员" : "普通用户"}</td>

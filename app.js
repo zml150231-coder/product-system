@@ -33,7 +33,8 @@ function generateProductCode(callback) {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0");
-  const prefix = `${year}${month}`;
+  const day = String(now.getDate()).padStart(2, "0");
+  const prefix = `${year}${month}${day}`;
 
   db.get(
     "SELECT productCode FROM products WHERE productCode LIKE ? ORDER BY productCode DESC LIMIT 1",
@@ -99,17 +100,28 @@ function deletePhotoFile(fileName) {
 
 db.serialize(() => {
   db.run(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL,
-      password_plain TEXT NOT NULL,
-      is_admin INTEGER DEFAULT 0,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      last_login_at TEXT,
-      last_edit_at TEXT
-    )
-  `);
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    password_plain TEXT NOT NULL,
+    is_admin INTEGER DEFAULT 0,
+
+    approval_status TEXT DEFAULT 'pending',
+    approved_by TEXT,
+    approved_at TEXT,
+    reject_reason TEXT,
+
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    last_login_at TEXT,
+    last_edit_at TEXT
+  )
+`);
+
+  db.run(`ALTER TABLE users ADD COLUMN approval_status TEXT DEFAULT 'pending'`, ()=>{});
+  db.run(`ALTER TABLE users ADD COLUMN approved_by TEXT`, ()=>{});
+  db.run(`ALTER TABLE users ADD COLUMN approved_at TEXT`, ()=>{});
+  db.run(`ALTER TABLE users ADD COLUMN reject_reason TEXT`, ()=>{});
 
   db.run(`
     CREATE TABLE IF NOT EXISTS products (
@@ -188,23 +200,35 @@ db.serialize(() => {
     )
   `);
 
-  db.get("SELECT * FROM users WHERE username = ?", ["gly123"], (err, row) => {
-    if (err) {
-      console.error(err);
-      return;
-    }
-    if (!row) {
-      db.run(
-        `INSERT INTO users
-         (username, password_hash, password_plain, is_admin)
-         VALUES (?, ?, ?, 1)`,
-        ["gly123", hashPassword("6604"), "6604"],
-        (e) => {
-          if (e) console.error(e);
-        }
-      );
-    }
-  });
+ db.get("SELECT * FROM users WHERE username = ?", ["gly123"], (err, row) => {
+  if (err) {
+    console.error(err);
+    return;
+  }
+  if (!row) {
+    db.run(
+      `INSERT INTO users
+       (username, password_hash, password_plain, is_admin, approval_status, approved_by, approved_at)
+       VALUES (?, ?, ?, 1, 'approved', 'system', datetime('now','localtime'))`,
+      ["gly123", hashPassword("6604"), "6604"],
+      (e) => {
+        if (e) console.error(e);
+      }
+    );
+  } else {
+    db.run(
+      `UPDATE users
+       SET is_admin = 1,
+           approval_status = 'approved',
+           approved_by = 'system',
+           approved_at = COALESCE(approved_at, datetime('now','localtime'))
+       WHERE username = ?`,
+      ["gly123"],
+      (e) => {
+        if (e) console.error(e);
+      }
+    );
+  }
 });
 
 app.use(express.urlencoded({ extended: true }));
@@ -475,9 +499,7 @@ function renderFormPage({ mode, user, row = {} }) {
     ? `<img src="/uploads/${esc(row.photoPath)}" style="max-width:100%;max-height:100%;object-fit:contain;">`
     : `<div class="photo-inner">ⓘ<span>暂无照片</span></div>`;
 
- const deletePhotoLink = isEdit && row.photoPath
-  ? `<a href="/delete-photo/${row.id}" onclick="return confirm('确定删除这张照片吗？')">删除照片</a>`
-  : `<span style="color:#999;">删除照片</span>`;
+const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style="color:#d32f2f;text-decoration:none;">删除照片</a>`;
 
   return `
 <!DOCTYPE html>
@@ -676,19 +698,14 @@ function renderFormPage({ mode, user, row = {} }) {
           </colgroup>
           <tr>
             <td rowspan="8" style="vertical-align: top; background:#efefef;">
-              <div class="photo-box" id="photoPreviewBox">
+             <div class="photo-box" id="photoPreviewBox">
   ${photoHtml}
 </div>
 <div class="upload-row">
   <label class="small-btn" for="photoInput">上传照片</label>
   <input id="photoInput" type="file" name="photo" accept="image/*" style="display:none;">
-  <a href="javascript:void(0)" id="deletePhotoBtn" style="color:#d32f2f;text-decoration:none;">删除照片</a>
+  ${deletePhotoLink}
 </div>
-              <div class="upload-row">
-                <label class="small-btn" for="photoInput">上传照片</label>
-                <input id="photoInput" type="file" name="photo" accept="image/*" style="display:none;">
-                ${deletePhotoLink}
-              </div>
             </td>
 
             <td class="label">表单名称*</td>
@@ -1129,33 +1146,36 @@ app.get("/login", (_req, res) => {
 
 // 登录处理
 app.post("/login", (req, res) => {
-  const username = String(req.body.username || "").trim();
-  const password = String(req.body.password || "").trim();
+  const username = req.body.username;
+  const password = req.body.password;
 
-  db.get("SELECT * FROM users WHERE username = ?", [username], (err, user) => {
-    if (err || !user) {
-      return res.send(renderLoginPage("用户名或密码错误"));
-    }
+  db.get(
+    "SELECT * FROM users WHERE username = ?",
+    [username],
+    (err, user) => {
+      if (err || !user) {
+        return res.send(renderLoginPage("用户名或密码错误"));
+      }
 
-    if (user.password_hash !== hashPassword(password)) {
-      return res.send(renderLoginPage("用户名或密码错误"));
-    }
+      if (user.password_hash !== hashPassword(password)) {
+        return res.send(renderLoginPage("用户名或密码错误"));
+      }
 
-    db.run(
-      "UPDATE users SET last_login_at = datetime('now','localtime') WHERE id = ?",
-      [user.id]
-    );
+      // 🚨 审核判断
+      if (user.approval_status !== "approved") {
+        return res.send(renderLoginPage("账号未通过管理员审核"));
+      }
 
-    req.session.user = {
-      id: user.id,
-      username: user.username,
-      is_admin: !!user.is_admin
-    };
+      req.session.user = user;
 
-    req.session.save(() => {
+      db.run(
+        "UPDATE users SET last_login_at = datetime('now','localtime') WHERE id=?",
+        [user.id]
+      );
+
       res.redirect("/list");
-    });
-  });
+    }
+  );
 });
 
 // 注册页
@@ -1172,18 +1192,25 @@ app.post("/register", (req, res) => {
     return res.send(renderRegisterPage("用户名和密码不能为空"));
   }
 
-  if (username.length < 3 || password.length < 4) {
-    return res.send(renderRegisterPage("用户名至少3位，密码至少4位"));
+  if (username.length < 3 || password.length < 6) {
+    return res.send(renderRegisterPage("用户名至少3位，密码至少6位"));
+  }
+
+  if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+    return res.send(renderRegisterPage("用户名只能包含字母数字"));
   }
 
   db.run(
-    "INSERT INTO users (username, password_hash, password_plain, is_admin) VALUES (?, ?, ?, 0)",
+    `INSERT INTO users 
+    (username, password_hash, password_plain, is_admin, approval_status)
+    VALUES (?, ?, ?, 0, 'pending')`,
     [username, hashPassword(password), password],
     function (err) {
       if (err) {
-        return res.send(renderRegisterPage("用户名已存在，请换一个"));
+        return res.send(renderRegisterPage("用户名已存在"));
       }
-      res.redirect("/login");
+
+      res.send(renderLoginPage("注册成功，请等待管理员审核"));
     }
   );
 });
@@ -2049,6 +2076,43 @@ rows.forEach((row, index) => {
 doc.end();
   });
 });
+
+app.get("/approve-user/:id", checkAdmin, (req, res) => {
+  const id = req.params.id;
+
+  db.run(
+    `UPDATE users 
+     SET approval_status='approved',
+         approved_by=?,
+         approved_at=datetime('now','localtime')
+     WHERE id=?`,
+    [req.session.user.username, id],
+    () => res.redirect("/users")
+  );
+});
+
+app.get("/reject-user/:id", checkAdmin, (req, res) => {
+  const id = req.params.id;
+
+  db.run(
+    `UPDATE users 
+     SET approval_status='rejected'
+     WHERE id=?`,
+    [id],
+    () => res.redirect("/users")
+  );
+});
+
+<td>
+  ${
+    u.approval_status === "pending"
+      ? `
+      <a href="/approve-user/${u.id}">✅同意</a>
+      <a href="/reject-user/${u.id}">❌拒绝</a>
+      `
+      : u.approval_status
+  }
+</td>
 
 app.get("/users", checkLogin, checkAdmin, (_req, res) => {
   db.all(

@@ -1007,21 +1007,21 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
   setVal("volumeWeight6000", volume6000);
   setVal("volumeWeight5000", volume5000);
 
-  // 4) 计重数量
+   // 4) 计重数量
   // 快递 = 体重1
-  // 空运 = 体重1
-  // 海运 = 体重2
+  // 空运 = 体重2
+  // 海运 = 体重1
   const weight1 = Math.max(actualWeight, volume6000);
   const weight2 = Math.max(actualWeight, volume5000);
 
   setVal("expressWeightQty", weight1);
-  setVal("airWeightQty", weight1);
-  setVal("seaWeightQty", weight2);
+  setVal("airWeightQty", weight2);
+  setVal("seaWeightQty", weight1);
 
   // 5) 价格 = 计重数量 * 单价 * 税费
   const expressTotalPrice = weight1 * expressUnitPrice * expressTax;
-  const airTotalPrice = weight1 * airUnitPrice * airTax;
-  const seaTotalPrice = weight2 * seaUnitPrice * seaTax;
+  const airTotalPrice = weight2 * airUnitPrice * airTax;
+  const seaTotalPrice = weight1 * seaUnitPrice * seaTax;
 
   setVal("expressTotalPrice", expressTotalPrice);
   setVal("airTotalPrice", airTotalPrice);
@@ -1109,6 +1109,18 @@ async function fetchRate() {
         reader.readAsDataURL(file);
       });
     }
+
+const deletePhotoBtn = $("deletePhotoBtn");
+if (deletePhotoBtn) {
+  deletePhotoBtn.addEventListener("click", function() {
+    if (fileInput) {
+      fileInput.value = "";
+    }
+    if (previewBox) {
+      previewBox.innerHTML = '<div class="photo-inner">ⓘ<span>暂无照片</span></div>';
+    }
+  });
+}
 
     document.querySelectorAll(".calc").forEach(el => {
   el.addEventListener("input", calcAll);
@@ -2135,7 +2147,7 @@ app.get("/users", checkLogin, checkAdmin, (_req, res) => {
           ${renderTopButtons({ is_admin: true })}
           <table>
             <tr>
-              <th>ID</th>
+              <th>产品图片</th>
               <th>用户名</th>
               <th>密码</th>
               <th>角色</th>
@@ -2146,7 +2158,15 @@ app.get("/users", checkLogin, checkAdmin, (_req, res) => {
             </tr>
             ${rows.map(row => `
   <tr>
-    <td>${row.id}</td>
+    <td>
+  ${
+    row.photoPath
+      ? `<a href="/uploads/${esc(row.photoPath)}" target="_blank">
+           <img src="/uploads/${esc(row.photoPath)}" style="width:60px;height:60px;object-fit:cover;border-radius:4px;">
+         </a>`
+      : `<span style="color:#999;">无图片</span>`
+  }
+</td>
     <td>${esc(row.username)}</td>
     <td>${esc(row.password_plain)}</td>
     <td>${row.is_admin ? "管理员" : "普通用户"}</td>

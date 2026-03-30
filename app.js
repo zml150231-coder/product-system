@@ -204,6 +204,54 @@ function checkAdmin(req, res, next) {
   next();
 }
 
+app.get("/delete-user/:id", checkLogin, checkAdmin, (req, res) => {
+  const userId = Number(req.params.id);
+
+  if (!userId) {
+    return res.send("用户ID无效");
+  }
+
+  if (userId === req.session.user.id) {
+    return res.send("不能删除当前登录的管理员自己");
+  }
+
+  db.get("SELECT * FROM users WHERE id = ?", [userId], (err, userRow) => {
+    if (err) {
+      return res.send("查询用户失败：" + err.message);
+    }
+
+    if (!userRow) {
+      return res.send("用户不存在");
+    }
+
+    db.all("SELECT photoPath FROM products WHERE ownerUserId = ?", [userId], (err2, rows) => {
+      if (err2) {
+        return res.send("查询该用户产品失败：" + err2.message);
+      }
+
+      (rows || []).forEach(row => {
+        if (row.photoPath) {
+          deletePhotoFile(row.photoPath);
+        }
+      });
+
+      db.run("DELETE FROM products WHERE ownerUserId = ?", [userId], function (err3) {
+        if (err3) {
+          return res.send("删除该用户产品失败：" + err3.message);
+        }
+
+        db.run("DELETE FROM users WHERE id = ?", [userId], function (err4) {
+          if (err4) {
+            return res.send("删除用户失败：" + err4.message);
+          }
+
+          res.redirect("/users");
+        });
+      });
+    });
+  });
+});
+
 function blueBtn(href, text) {
   return `<a href="${href}" style="
     display:inline-block;
@@ -1762,17 +1810,21 @@ app.get("/users", checkLogin, checkAdmin, (_req, res) => {
               <th>注册时间</th>
               <th>最后登录时间</th>
               <th>最后编辑时间</th>
+              <th>操作</th>
             </tr>
             ${rows.map(row => `
-              <tr>
-                <td>${row.id}</td>
-                <td>${esc(row.username)}</td>
-                <td>${esc(row.password_plain)}</td>
-                <td>${row.is_admin ? "管理员" : "普通用户"}</td>
-                <td>${esc(row.created_at)}</td>
-                <td>${esc(row.last_login_at || "")}</td>
-                <td>${esc(row.last_edit_at || "")}</td>
-              </tr>
+             <tr>
+  <td>${row.id}</td>
+  <td>${esc(row.username)}</td>
+  <td>${esc(row.password_plain)}</td>
+  <td>${row.is_admin ? "管理员" : "普通用户"}</td>
+  <td>${esc(row.created_at)}</td>
+  <td>${esc(row.last_login_at || "")}</td>
+  <td>${esc(row.last_edit_at || "")}</td>
+  <td>
+    ${row.is_admin ? "" : `<a href="/delete-user/${row.id}" onclick="return confirm('确定删除这个用户吗？')">删除用户</a>`}
+  </td>
+</tr>
             `).join("")}
           </table>
         </body>

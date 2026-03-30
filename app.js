@@ -557,7 +557,7 @@ function renderFormPage({ mode, user, row = {} }) {
   <div class="page">
     <div class="button-area">
       ${renderTopButtons(user)}
-      ${isEdit ? `<span style="font-size:13px;color:#444;">创建人：${esc(row.ownerUsername || "")} ｜ 最后编辑人：${esc(row.lastEditedByUsername || "")} ｜ 创建时间：${esc(row.createdAt || "")} ｜ 最后更新时间：${esc(row.updatedAt || "")}</span>` : ""}
+      ${isEdit ? `<span style="font-size:13px;color:#444;">创建人：${esc(row.ownerUsername || "")} ｜ 最后编辑人：${esc(row.lastEditedByUsername || "")} ｜ 创建时间：${esc(formatTime(row.createdAt))} ｜ 最后更新时间：${esc(formatTime(row.updatedAt))}</span>` : ""}
     </div>
 
     <form method="POST" action="${action}" enctype="multipart/form-data">
@@ -1403,8 +1403,8 @@ app.get("/detail/:id", checkLogin, (req, res) => {
       ["仓租(USD)", row.warehouseUsd],
       ["配送+分拨(USD)", row.deliveryUsd],
       ["广告费(RMB)", row.adCostRmb],
-      ["创建时间", row.createdAt],
-      ["最后更新时间", row.updatedAt]
+      ["创建时间", formatTime(row.createdAt)],
+      ["最后更新时间", formatTime(row.updatedAt)]
     ];
 
     let items = photoBlock;

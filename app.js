@@ -819,6 +819,21 @@ function renderFormPage({ mode, user, row = {} }) {
       return Number.isFinite(v) ? v : 0;
     }
 
+function formatTime(value) {
+  if (!value) return "";
+  const d = new Date(value.replace(" ", "T") + "Z");
+  return d.toLocaleString("zh-CN", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false
+  });
+}
+
     function setVal(id, value, digits = 3) {
       const el = $(id);
       if (!el) return;
@@ -1283,7 +1298,7 @@ app.get("/list", checkLogin, (req, res) => {
                   <td>${esc(row.purchaseCost)}</td>
                   <td>${esc(row.sellingPriceUsd)}</td>
                   ${user.is_admin ? `<td>${esc(row.ownerUsername)}</td><td>${esc(row.lastEditedByUsername)}</td>` : ""}
-                  <td>${esc(row.updatedAt)}</td>
+                  <td>${esc(formatTime(row.updatedAt))}</td>
                   <td>
                     <a href="/edit/${row.id}">编辑</a>
                     &nbsp;|&nbsp;

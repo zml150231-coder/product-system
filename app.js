@@ -1678,37 +1678,85 @@ app.get("/export-excel", checkLogin, (req, res) => {
   `;
 
   db.all(sql, params, (err, rows) => {
-    if (err) {
-      return res.send("导出失败：" + err.message);
-    }
+  if (err) {
+    return res.send("导出失败：" + err.message);
+  }
 
-    const exportRows = rows.map(row => ({
-      ID: row.id,
-      表单名称: row.formName,
-      产品名称: row.productName,
-      产品编号: row.productCode,
-      采购成本: row.purchaseCost,
-      销售价USD: row.sellingPriceUsd,
-      创建人: row.ownerUsername,
-      最后编辑人: row.lastEditedByUsername,
-      创建时间: row.createdAt,
-      最后更新时间: row.updatedAt
-    }));
+  const wb = XLSX.utils.book_new();
 
-    const ws = XLSX.utils.json_to_sheet(exportRows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Products");
+  rows.forEach((row) => {
+    const data = [
+      ["Product Development Record Sheet"],
+      [],
+      ["基本信息", "", "", "", "", ""],
+      ["表单名称", row.formName || "", "产品名称", row.productName || "", "", ""],
+      ["产品编号", row.productCode || "", "汇率", row.exchangeRate || "", "", ""],
+      ["采购成本(RMB)", row.purchaseCost || "", "佣金(%)", row.commissionRate || "", "", ""],
+      ["分销价", row.fenxiaoPrice || "", "广告费(%)", row.adRate || "", "", ""],
+      ["分销减采购成本利润", row.profitCostDiff || "", "利润率1(%)", row.profitRate1 || "", "", ""],
+      ["销售价(USD)", row.sellingPriceUsd || "", "销售价(RMB)", row.sellingPriceRmb || "", "", ""],
+      ["销售价-分销价利润", row.profitSellDiff || "", "利润率2(%)", row.profitRate2 || "", "", ""],
+      ["备注", row.remark || "", "", "", "", ""],
+      [],
+      ["包装信息", "", "", "", "", ""],
+      ["包装方式", row.packageType || "", "实重", row.actualWeight || "", "", ""],
+      ["长(CM)", row.lengthCm || "", "宽(CM)", row.widthCm || "", "高(CM)", row.heightCm || ""],
+      ["体积重1(/6000)", row.volumeWeight6000 || "", "体积重2(/5000)", row.volumeWeight5000 || "", "", ""],
+      [],
+      ["运输信息", "", "", "", "", ""],
+      ["快递价格", row.expressTotalPrice || "", "快递利润", row.expressProfit || "", "快递利润率", row.expressProfitRate || ""],
+      ["空运价格", row.airTotalPrice || "", "空运利润", row.airProfit || "", "空运利润率", row.airProfitRate || ""],
+      ["海运价格", row.seaTotalPrice || "", "海运利润", row.seaProfit || "", "海运利润率", row.seaProfitRate || ""],
+      [],
+      ["其他费用", "", "", "", "", ""],
+      ["FBA费用(RMB)", row.fbaFeeRmb || "", "佣金(RMB)", row.commissionRmb || "", "", ""],
+      ["退货成本(RMB)", row.returnCostRmb || "", "仓租(USD)", row.warehouseUsd || "", "", ""],
+      ["配送+分拨(USD)", row.deliveryUsd || "", "广告费(RMB)", row.adCostRmb || "", "", ""],
+      [],
+      ["记录信息", "", "", "", "", ""],
+      ["创建人", row.ownerUsername || "", "最后编辑人", row.lastEditedByUsername || "", "", ""],
+      ["创建时间", row.createdAt || "", "最后更新时间", row.updatedAt || "", "", ""]
+    ];
 
-    const fileName = `products_${Date.now()}.xlsx`;
-    const filePath = path.join(ROOT, fileName);
+    const ws = XLSX.utils.aoa_to_sheet(data);
 
-    XLSX.writeFile(wb, filePath);
+    ws["!merges"] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } },
+      { s: { r: 2, c: 0 }, e: { r: 2, c: 5 } },
+      { s: { r: 10, c: 1 }, e: { r: 10, c: 5 } },
+      { s: { r: 12, c: 0 }, e: { r: 12, c: 5 } },
+      { s: { r: 17, c: 0 }, e: { r: 17, c: 5 } },
+      { s: { r: 22, c: 0 }, e: { r: 22, c: 5 } },
+      { s: { r: 27, c: 0 }, e: { r: 27, c: 5 } }
+    ];
 
-    res.download(filePath, fileName, (downloadErr) => {
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-      if (downloadErr) console.error(downloadErr);
-    });
+    ws["!cols"] = [
+      { wch: 18 },
+      { wch: 22 },
+      { wch: 18 },
+      { wch: 22 },
+      { wch: 18 },
+      { wch: 22 }
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, `表单_${row.id}`.slice(0, 31));
   });
+
+  if (rows.length === 0) {
+    const ws = XLSX.utils.aoa_to_sheet([["没有可导出的记录"]]);
+    XLSX.utils.book_append_sheet(wb, ws, "Products");
+  }
+
+  const fileName = `products_${Date.now()}.xlsx`;
+  const filePath = path.join(ROOT, fileName);
+
+  XLSX.writeFile(wb, filePath);
+
+  res.download(filePath, fileName, (downloadErr) => {
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    if (downloadErr) console.error(downloadErr);
+  });
+});
 });
 
 app.get("/export-pdf", checkLogin, (req, res) => {
@@ -1746,12 +1794,11 @@ app.get("/export-pdf", checkLogin, (req, res) => {
   }
 
   const sql = `
-    SELECT id, formName, productName, productCode, purchaseCost, sellingPriceUsd,
-           ownerUsername, lastEditedByUsername, updatedAt
-    FROM products
-    ${whereSql}
-    ORDER BY datetime(updatedAt) DESC, id DESC
-  `;
+  SELECT *
+  FROM products
+  ${whereSql}
+  ORDER BY datetime(updatedAt) DESC, id DESC
+`;
 
   db.all(sql, params, (err, rows) => {
     if (err) {
@@ -1759,34 +1806,115 @@ app.get("/export-pdf", checkLogin, (req, res) => {
     }
 
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename="products_${Date.now()}.pdf"`);
+res.setHeader("Content-Disposition", `attachment; filename="products_${Date.now()}.pdf"`);
 
-    const doc = new PDFDocument({ margin: 40, size: "A4" });
-    doc.pipe(res);
+const doc = new PDFDocument({ margin: 30, size: "A4" });
+doc.pipe(res);
 
-    doc.fontSize(18).text("Product List", { align: "center" });
-    doc.moveDown();
+function drawField(label, value, x, y, w = 250) {
+  doc.fontSize(10).text(label, x, y, { width: 80 });
+  doc.rect(x + 80, y - 2, w - 80, 18).stroke();
+  doc.fontSize(10).text(String(value || ""), x + 85, y + 3, { width: w - 90 });
+}
 
-    if (rows.length === 0) {
-      doc.fontSize(12).text("No records found.");
-    } else {
-      rows.forEach((row, index) => {
-        doc
-          .fontSize(12)
-          .text(`${index + 1}. ID: ${row.id}`)
-          .text(`Form Name: ${row.formName || ""}`)
-          .text(`Product Name: ${row.productName || ""}`)
-          .text(`Product Code: ${row.productCode || ""}`)
-          .text(`Purchase Cost: ${row.purchaseCost || ""}`)
-          .text(`Selling Price USD: ${row.sellingPriceUsd || ""}`)
-          .text(`Owner: ${row.ownerUsername || ""}`)
-          .text(`Last Edited By: ${row.lastEditedByUsername || ""}`)
-          .text(`Updated At: ${row.updatedAt || ""}`)
-          .moveDown();
-      });
-    }
+function drawSectionTitle(title, y) {
+  doc.rect(30, y, 535, 20).fillAndStroke("#e0e0e0", "#999999");
+  doc.fillColor("#000").fontSize(12).text(title, 35, y + 5);
+}
 
-    doc.end();
+if (rows.length === 0) {
+  doc.fontSize(14).text("没有可导出的记录", { align: "center" });
+  doc.end();
+  return;
+}
+
+rows.forEach((row, index) => {
+  if (index > 0) doc.addPage();
+
+  let y = 30;
+
+  doc.fontSize(18).text("Product Development Record Sheet", 30, y, {
+    width: 535,
+    align: "center"
+  });
+  y += 30;
+
+  drawSectionTitle("基本信息", y);
+  y += 30;
+  drawField("表单名称", row.formName, 30, y, 260);
+  drawField("产品名称", row.productName, 305, y, 260);
+  y += 28;
+  drawField("产品编号", row.productCode, 30, y, 260);
+  drawField("汇率", row.exchangeRate, 305, y, 260);
+  y += 28;
+  drawField("采购成本", row.purchaseCost, 30, y, 260);
+  drawField("佣金(%)", row.commissionRate, 305, y, 260);
+  y += 28;
+  drawField("分销价", row.fenxiaoPrice, 30, y, 260);
+  drawField("广告费(%)", row.adRate, 305, y, 260);
+  y += 28;
+  drawField("利润1", row.profitCostDiff, 30, y, 260);
+  drawField("利润率1", row.profitRate1, 305, y, 260);
+  y += 28;
+  drawField("销售价USD", row.sellingPriceUsd, 30, y, 260);
+  drawField("销售价RMB", row.sellingPriceRmb, 305, y, 260);
+  y += 28;
+  drawField("利润2", row.profitSellDiff, 30, y, 260);
+  drawField("利润率2", row.profitRate2, 305, y, 260);
+  y += 35;
+
+  drawSectionTitle("包装信息", y);
+  y += 30;
+  drawField("包装方式", row.packageType, 30, y, 260);
+  drawField("实重", row.actualWeight, 305, y, 260);
+  y += 28;
+  drawField("长(CM)", row.lengthCm, 30, y, 170);
+  drawField("宽(CM)", row.widthCm, 210, y, 170);
+  drawField("高(CM)", row.heightCm, 390, y, 175);
+  y += 28;
+  drawField("体积重6000", row.volumeWeight6000, 30, y, 260);
+  drawField("体积重5000", row.volumeWeight5000, 305, y, 260);
+  y += 35;
+
+  drawSectionTitle("运输信息", y);
+  y += 30;
+  drawField("快递价格", row.expressTotalPrice, 30, y, 170);
+  drawField("快递利润", row.expressProfit, 210, y, 170);
+  drawField("快递利润率", row.expressProfitRate, 390, y, 175);
+  y += 28;
+  drawField("空运价格", row.airTotalPrice, 30, y, 170);
+  drawField("空运利润", row.airProfit, 210, y, 170);
+  drawField("空运利润率", row.airProfitRate, 390, y, 175);
+  y += 28;
+  drawField("海运价格", row.seaTotalPrice, 30, y, 170);
+  drawField("海运利润", row.seaProfit, 210, y, 170);
+  drawField("海运利润率", row.seaProfitRate, 390, y, 175);
+  y += 35;
+
+  drawSectionTitle("其他费用", y);
+  y += 30;
+  drawField("FBA费用", row.fbaFeeRmb, 30, y, 260);
+  drawField("佣金RMB", row.commissionRmb, 305, y, 260);
+  y += 28;
+  drawField("退货成本", row.returnCostRmb, 30, y, 260);
+  drawField("仓租USD", row.warehouseUsd, 305, y, 260);
+  y += 28;
+  drawField("配送+分拨", row.deliveryUsd, 30, y, 260);
+  drawField("广告费RMB", row.adCostRmb, 305, y, 260);
+  y += 35;
+
+  drawSectionTitle("记录信息", y);
+  y += 30;
+  drawField("创建人", row.ownerUsername, 30, y, 260);
+  drawField("最后编辑人", row.lastEditedByUsername, 305, y, 260);
+  y += 28;
+  drawField("创建时间", row.createdAt, 30, y, 260);
+  drawField("最后更新时间", row.updatedAt, 305, y, 260);
+  y += 28;
+  drawField("备注", row.remark, 30, y, 535);
+});
+
+doc.end();
   });
 });
 

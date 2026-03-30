@@ -475,8 +475,9 @@ function renderFormPage({ mode, user, row = {} }) {
     ? `<img src="/uploads/${esc(row.photoPath)}" style="max-width:100%;max-height:100%;object-fit:contain;">`
     : `<div class="photo-inner">ⓘ<span>暂无照片</span></div>`;
 
-  const deletePhotoLink =
-    isEdit && row.photoPath
+ const deletePhotoLink = `
+  <a href="/delete-photo/${row.id}" onclick="return confirm('确定删除这张照片吗？')">删除照片</a>
+`;
       ? `<a href="/delete-photo/${row.id}" onclick="return confirm('确定删除这张照片吗？')">删除照片</a>`
       : `<span style="color:#999;">删除照片</span>`;
 

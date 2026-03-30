@@ -231,6 +231,8 @@ db.serialize(() => {
   }
 });
 
+});
+  
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(ROOT));
 app.use("/uploads", express.static(UPLOAD_DIR));

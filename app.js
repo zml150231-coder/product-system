@@ -291,6 +291,7 @@ db.run(`ALTER TABLE products ADD COLUMN competitor2Price TEXT`, ()=>{});
 db.run(`ALTER TABLE products ADD COLUMN competitor3Name TEXT`, ()=>{});
 db.run(`ALTER TABLE products ADD COLUMN competitor3Link TEXT`, ()=>{});
 db.run(`ALTER TABLE products ADD COLUMN competitor3Image TEXT`, ()=>{});
+db.run(`ALTER TABLE products ADD COLUMN competitor3Price TEXT`, ()=>{});
 
 // 为了按图片规则计算，必须补一个尺寸分段字段
 db.run(`ALTER TABLE products ADD COLUMN sizeTier TEXT`, ()=>{});
@@ -1378,9 +1379,9 @@ app.post("/login", (req, res) => {
         return res.send(renderLoginPage("用户名或密码错误"));
       }
 
-      if (row.approval_status !== "approved") {
+if (user.approval_status !== "approved") {
   return res.send(renderLoginPage("该账户尚未通过管理员审核"));
-      }
+}
 
       if (user.password_hash !== hashPassword(password)) {
         return res.send(renderLoginPage("用户名或密码错误"));
@@ -1749,7 +1750,26 @@ app.get("/list", checkLogin, (req, res) => {
 </td>
                   <td><a href="/detail/${row.id}">${esc(row.formName)}</a></td>
                   <td>${esc(row.productName)}</td>
-                 <td>${esc(row.seaProfitRate || "")}%</td>
+                 <td>${esc(row.productCode || "")}</td>
+<td>${esc(row.seaProfitRate || "")}%</td>
+<td>
+  ${
+    row.approveStatus === "approved"
+      ? "✅ 通过"
+      : row.approveStatus === "rejected"
+      ? "❌ 不通过"
+      : "⏳ 待审核"
+  }
+</td>
+<td>
+  ${
+    row.approveStatus === "approved"
+      ? "✅ 通过"
+      : row.approveStatus === "rejected"
+      ? "❌ 不通过"
+      : "⏳ 待审核"
+  }
+</td>>
 
 <td>
   ${

@@ -545,29 +545,28 @@ app.get("/inbox", checkLogin, checkAdmin, (req, res) => {
     if (err) {
       return res.send("生成PDF失败：" + err.message);
     }
-    res.redirect("/inbox");
-  });
-});
-      
-          <tr>
-            <th>周开始</th>
-            <th>周结束</th>
-            <th>时间</th>
-            <th>PDF</th>
-          </tr>
+res.send(`
+  <h2>管理员收件箱</h2>
+  ${renderTopButtons(req.session.user)}
 
-          ${rows.map(r => `
-            <tr>
-              <td>${r.weekStart}</td>
-              <td>${r.weekEnd}</td>
-              <td>${r.createdAt}</td>
-              <td><a href="/${r.pdfPath}" target="_blank">查看</a></td>
-            </tr>
-          `).join("")}
-        </table>
-      `);
-    }
-  );
+  <table border="1" cellpadding="10">
+    <tr>
+      <th>周开始</th>
+      <th>周结束</th>
+      <th>时间</th>
+      <th>PDF</th>
+    </tr>
+
+    ${rows.map(r => `
+      <tr>
+        <td>${r.weekStart}</td>
+        <td>${r.weekEnd}</td>
+        <td>${r.createdAt}</td>
+        <td><a href="/${r.pdfPath}" target="_blank">查看</a></td>
+      </tr>
+    `).join("")}
+  </table>
+`);
 });
 
 function blueBtn(href, text) {

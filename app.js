@@ -500,73 +500,89 @@ app.get("/inbox", checkLogin, checkAdmin, (req, res) => {
     (err, rows) => {
       if (err) return res.send(err.message);
 
-     res.send(`
-  <h2>管理员收件箱</h2>
-  ${renderTopButtons(req.session.user)}
+      res.send(`
+        <!DOCTYPE html>
+        <html lang="zh-CN">
+        <head>
+          <meta charset="UTF-8">
+          <title>管理员收件箱</title>
+          <style>
+            body{
+              font-family: Arial, "Microsoft YaHei", sans-serif;
+              margin:20px;
+              background:#fff;
+            }
+            table{
+              width:100%;
+              border-collapse:collapse;
+              margin-top:20px;
+            }
+            th, td{
+              border:1px solid #ccc;
+              padding:10px;
+              text-align:center;
+            }
+            th{
+              background:#f3f3f3;
+            }
+            a{
+              color:#2f6fed;
+              text-decoration:none;
+            }
+            .btn{
+              display:inline-block;
+              background:#2f6fed;
+              color:#fff !important;
+              text-decoration:none;
+              padding:10px 16px;
+              border-radius:4px;
+              font-size:14px;
+            }
+          </style>
+        </head>
+        <body>
+          <h2>管理员收件箱</h2>
+          ${renderTopButtons(req.session.user)}
 
-  <div style="margin: 12px 0;">
-    <a href="/generate-weekly-pdf"
-       style="
-         display:inline-block;
-         background:#2f6fed;
-         color:#fff;
-         text-decoration:none;
-         padding:10px 16px;
-         border-radius:4px;
-         font-size:14px;
-       "
-       onclick="return confirm('确定立即生成一份新的汇总PDF吗？')"
-    >
-      立即生成汇总PDF
-    </a>
-  </div>
+          <div style="margin: 12px 0;">
+            <a href="/generate-weekly-pdf"
+               class="btn"
+               onclick="return confirm('确定立即生成一份新的汇总PDF吗？')">
+              立即生成汇总PDF
+            </a>
+          </div>
 
-  <table border="1" cellpadding="10">
-    <tr>
-      <th>周开始</th>
-      <th>周结束</th>
-      <th>时间</th>
-      <th>PDF</th>
-    </tr>
+          <table>
+            <tr>
+              <th>周开始</th>
+              <th>周结束</th>
+              <th>时间</th>
+              <th>PDF</th>
+            </tr>
 
-    ${rows.map(r => `
-      <tr>
-        <td>${r.weekStart}</td>
-        <td>${r.weekEnd}</td>
-        <td>${r.createdAt}</td>
-        <td><a href="/${r.pdfPath}" target="_blank">查看</a></td>
-      </tr>
-    `).join("")}
-  </table>
-`);
+            ${rows.map(r => `
+              <tr>
+                <td>${esc(r.weekStart || "")}</td>
+                <td>${esc(r.weekEnd || "")}</td>
+                <td>${esc(r.createdAt || "")}</td>
+                <td><a href="/${esc(r.pdfPath || "")}" target="_blank">查看</a></td>
+              </tr>
+            `).join("")}
+          </table>
+        </body>
+        </html>
+      `);
+    }
+  );
+});
 
-      app.get("/generate-weekly-pdf", checkLogin, checkAdmin, (req, res) => {
+app.get("/generate-weekly-pdf", checkLogin, checkAdmin, (req, res) => {
   generateWeeklySummaryPdf((err, pdfName) => {
     if (err) {
       return res.send("生成PDF失败：" + err.message);
     }
-res.send(`
-  <h2>管理员收件箱</h2>
-  ${renderTopButtons(req.session.user)}
-
-  <table border="1" cellpadding="10">
-    <tr>
-      <th>周开始</th>
-      <th>周结束</th>
-      <th>时间</th>
-      <th>PDF</th>
-    </tr>
-
-    ${rows.map(r => `
-      <tr>
-        <td>${r.weekStart}</td>
-        <td>${r.weekEnd}</td>
-        <td>${r.createdAt}</td>
-        <td><a href="/${r.pdfPath}" target="_blank">查看</a></td>
-      </tr>
-    `).join("")}
-  </table>
-`);
+    res.redirect("/inbox");
+  });
 });
 
 function blueBtn(href, text) {

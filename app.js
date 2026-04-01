@@ -219,7 +219,6 @@ db.run(`ALTER TABLE products ADD COLUMN competitor2Price TEXT`, ()=>{});
 db.run(`ALTER TABLE products ADD COLUMN competitor3Name TEXT`, ()=>{});
 db.run(`ALTER TABLE products ADD COLUMN competitor3Link TEXT`, ()=>{});
 db.run(`ALTER TABLE products ADD COLUMN competitor3Image TEXT`, ()=>{});
-db.run(`ALTER TABLE products ADD COLUMN competitor3Price TEXT`, ()=>{}`);
 
 // 为了按图片规则计算，必须补一个尺寸分段字段
 db.run(`ALTER TABLE products ADD COLUMN sizeTier TEXT`, ()=>{});

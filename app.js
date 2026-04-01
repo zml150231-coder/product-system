@@ -1329,69 +1329,6 @@ const cubicFeet = (lengthIn * widthIn * heightIn) / 1728;
 // 现在先按你给的淡季单价 0.78
 const warehouseUsd = cubicFeet * 0.78;
 setVal("warehouseUsd", warehouseUsd);
-
-// ===== 配送+分拨(USD) =====
-// 你说现在默认不用，先自动填 0
-setVal("deliveryUsd", 0);
-
-// ===== 退货成本(RMB) =====
-// 佣金 * 20%，最高 5 美元封顶
-let returnCostRmb = commissionRmb * 0.2;
-const maxReturnCostRmb = 5 * exchangeRate;
-if (returnCostRmb > maxReturnCostRmb) {
-  returnCostRmb = maxReturnCostRmb;
-}
-setVal("returnCostRmb", returnCostRmb);
-
-  // ===== 销售价 RMB =====
-  const sellingRmb = sellingPriceUsd * exchangeRate;
-  setVal("sellingPriceRmb", sellingRmb);
-
-  // ===== 佣金 =====
-  const commissionRmb = sellingPriceUsd * (commissionRate/100) * exchangeRate;
-  setVal("commissionRmb", commissionRmb);
-
-  // ===== 广告费 =====
-  const adCost = sellingPriceUsd * (adRate/100) * exchangeRate;
-  setVal("adCostRmb", adCost);
-
-  // ===== 仓储费（你刚问的重点）=====
-  const lengthIn = length / 2.54;
-  const widthIn = width / 2.54;
-  const heightIn = height / 2.54;
-
-  const cubicFeet = (lengthIn * widthIn * heightIn) / 1728;
-
-  const storageUsd = cubicFeet * 0.78; // 淡季
-  setVal("warehouseUsd", storageUsd);
-
-  // ===== 退货成本 =====
-  let returnCost = commissionRmb * 0.2;
-  if(returnCost > 5 * exchangeRate){
-    returnCost = 5 * exchangeRate;
-  }
-  setVal("returnCostRmb", returnCost);
-
-  // ===== 总成本（关键）=====
-  const fba = num("fbaFeeRmb");
-
-  const total =
-    purchaseCost +
-    fba +
-    commissionRmb +
-    adCost +
-    (storageUsd * exchangeRate) +
-    returnCost;
-
-  console.log("总成本:", total);
-}
-</script>
-
-<script>
-document.querySelectorAll(".calc").forEach(el=>{
-  el.addEventListener("input", calcAll);
-});
-</script>
     
   </div>
 

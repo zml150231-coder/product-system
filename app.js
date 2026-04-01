@@ -1004,10 +1004,10 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
 </div>
             </td>
 
-            <td class="label">表单名称*</td>
-            <td><input class="input" type="text" name="formName" id="formName" value="${esc(row.formName || "")}" /></td>
             <td class="label">产品名称*</td>
-            <td><input class="input" type="text" name="productName" id="productName" value="${esc(row.productName || "")}" /></td>
+<td><input class="input" type="text" name="productName" id="productName" value="${esc(row.productName || "")}" /></td>
+<td class="label"></td>
+<td></td>
           </tr>
           <tr>
             <td class="label">产品编号</td>
@@ -1318,6 +1318,25 @@ window.addEventListener("DOMContentLoaded", () => {
     fetchRate();
   }
 });
+</script>
+
+<script>
+function fetchRate() {
+  fetch("https://open.er-api.com/v6/latest/USD")
+    .then(res => res.json())
+    .then(data => {
+      const rate = Number(data && data.rates && data.rates.CNY || 0);
+      if (!rate) {
+        alert("汇率获取失败");
+        return;
+      }
+      document.getElementById("exchangeRate").value = (rate * 0.9).toFixed(4);
+      if (typeof calcAll === "function") calcAll();
+    })
+    .catch(() => {
+      alert("汇率获取失败");
+    });
+}
 </script>
 
 <script>
@@ -1895,7 +1914,26 @@ app.get("/edit/:id", checkLogin, (req, res) => {
     if (err || !row) {
       return res.send("找不到要编辑的数据");
     }
-    res.send(renderFormPage({ mode: "edit", user: req.session.user, row }));
+
+    if (row.productCode) {
+      return res.send(renderFormPage({ mode: "edit", user: req.session.user, row }));
+    }
+
+    generateProductCode((codeErr, autoCode) => {
+      if (codeErr) {
+        return res.send("生成产品编号失败：" + codeErr.message);
+      }
+
+      row.productCode = autoCode;
+
+      db.run(
+        "UPDATE products SET productCode = ?, updatedAt = datetime('now','localtime') WHERE id = ?",
+        [autoCode, req.params.id],
+        () => {
+          res.send(renderFormPage({ mode: "edit", user: req.session.user, row }));
+        }
+      );
+    });
   });
 });
 

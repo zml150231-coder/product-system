@@ -1312,9 +1312,9 @@ async function autoFillCompetitors() {
   const data = await res.json();
 
   for (let i = 0; i < data.length; i++) {
-    document.getElementById(`competitor${i+1}Name`).value = data[i].cn;
-    document.getElementById(`competitor${i+1}Link`).value = data[i].link;
-    document.getElementById(`competitor${i+1}Price`).value = data[i].price;
+    document.getElementById("competitor" + (i + 1) + "Name").value = data[i].cn;
+    document.getElementById("competitor" + (i + 1) + "Link").value = data[i].link;
+    document.getElementById("competitor" + (i + 1) + "Price").value = data[i].price;
   }
 }
 
@@ -1821,7 +1821,7 @@ app.get("/list", checkLogin, (req, res) => {
 
         <script>
           function toggleDateRange() {
-            const mode = document.("dateMode").value;
+            const mode = document.getElementById("dateMode").value;
             document.getElementById("dateRangeBox").style.display =
               mode === "range" ? "inline-block" : "none";
           }

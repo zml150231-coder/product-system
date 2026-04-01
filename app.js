@@ -1008,6 +1008,7 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
 <td><input class="input" type="text" name="productName" id="productName" value="${esc(row.productName || "")}" /></td>
 <td class="label"></td>
 <td></td>
+<td></td>
           </tr>
           <tr>
             <td class="label">产品编号</td>
@@ -1298,6 +1299,16 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
 
 <script>
 window.addEventListener("DOMContentLoaded", () => {
+
+const codeInput = document.getElementById("productCode");
+if (codeInput && (!codeInput.value || codeInput.value === "自动生成")) {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  const rand = Math.floor(Math.random() * 900 + 100);
+  codeInput.value = `${y}${m}${d}${rand}`;
+}
   if (!$("expressUnitPrice").value) {
     $("expressUnitPrice").value = localStorage.getItem("expressUnitPrice") || "";
   }
@@ -1352,7 +1363,18 @@ function fillCompetitors(){
   }
 }
 </script>
-
+<script>
+function fetchRate() {
+  fetch("https://open.er-api.com/v6/latest/USD")
+    .then(res => res.json())
+    .then(data => {
+      const rate = data.rates.CNY;
+      document.getElementById("exchangeRate").value = (rate * 0.9).toFixed(4);
+      if (typeof calcAll === "function") calcAll();
+    })
+    .catch(() => alert("汇率获取失败"));
+}
+</script>
 </body>
 </html>
   `;

@@ -139,6 +139,10 @@ function generateWeeklySummaryPdf(callback) {
       const stream = fs.createWriteStream(pdfPath);
       doc.pipe(stream);
 
+      const fontPath = path.join(ROOT, "NotoSansCJKsc-Regular.otf");
+      if (fs.existsSync(fontPath)) {
+      doc.font(fontPath);
+}
       doc.fontSize(20).text("每周产品汇总", { align: "center" });
       doc.moveDown();
 
@@ -1202,6 +1206,80 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
         <button class="submit-btn" type="submit">${buttonText}</button>
       </div>
     </form>
+
+<script>
+function num(id){
+  return parseFloat(document.getElementById(id)?.value || 0);
+}
+
+function setVal(id, val){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.value = (val || 0).toFixed(3);
+}
+
+function calcAll(){
+
+  const exchangeRate = num("exchangeRate");
+  const purchaseCost = num("purchaseCost");
+  const commissionRate = num("commissionRate");
+  const adRate = num("adRate");
+  const sellingPriceUsd = num("sellingPriceUsd");
+
+  const length = num("lengthCm");
+  const width = num("widthCm");
+  const height = num("heightCm");
+
+  // ===== 销售价 RMB =====
+  const sellingRmb = sellingPriceUsd * exchangeRate;
+  setVal("sellingPriceRmb", sellingRmb);
+
+  // ===== 佣金 =====
+  const commissionRmb = sellingPriceUsd * (commissionRate/100) * exchangeRate;
+  setVal("commissionRmb", commissionRmb);
+
+  // ===== 广告费 =====
+  const adCost = sellingPriceUsd * (adRate/100) * exchangeRate;
+  setVal("adCostRmb", adCost);
+
+  // ===== 仓储费（你刚问的重点）=====
+  const lengthIn = length / 2.54;
+  const widthIn = width / 2.54;
+  const heightIn = height / 2.54;
+
+  const cubicFeet = (lengthIn * widthIn * heightIn) / 1728;
+
+  const storageUsd = cubicFeet * 0.78; // 淡季
+  setVal("warehouseUsd", storageUsd);
+
+  // ===== 退货成本 =====
+  let returnCost = commissionRmb * 0.2;
+  if(returnCost > 5 * exchangeRate){
+    returnCost = 5 * exchangeRate;
+  }
+  setVal("returnCostRmb", returnCost);
+
+  // ===== 总成本（关键）=====
+  const fba = num("fbaFeeRmb");
+
+  const total =
+    purchaseCost +
+    fba +
+    commissionRmb +
+    adCost +
+    (storageUsd * exchangeRate) +
+    returnCost;
+
+  console.log("总成本:", total);
+}
+</script>
+
+<script>
+document.querySelectorAll(".calc").forEach(el=>{
+  el.addEventListener("input", calcAll);
+});
+</script>
+    
   </div>
 
   <script>

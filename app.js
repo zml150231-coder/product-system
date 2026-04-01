@@ -1791,8 +1791,8 @@ app.get("/list", checkLogin, (req, res) => {
 
   ${
     user.is_admin
-      ? `&nbsp;|&nbsp;<a href="/approve-product/${row.id}?status=approved">通过</a>
-         &nbsp;|&nbsp;<a href="/approve-product/${row.id}?status=rejected">不通过</a>`
+      ? `&nbsp;|&nbsp;<a href="/approve-product/${row.id}">通过</a>
+         &nbsp;|&nbsp;<a href="/reject-product/${row.id}">不通过</a>
       : ""
   }
 </td>
@@ -2461,9 +2461,9 @@ app.get("/users", checkLogin, checkAdmin, (_req, res) => {
           ? ""
           : row.approval_status === "pending"
             ? `
-             <a href="/approve-user/${row.id}?status=approved">✅ 通过</a>
+             <a href="/approve-user/${row.id}">通过</a>
 &nbsp;&nbsp;
-<a href="/approve-user/${row.id}?status=rejected">❌ 不通过</a>
+<a href="/reject-user/${row.id}">不通过</a>
               &nbsp;|&nbsp;
               <a href="/delete-user/${row.id}" onclick="return confirm('确定删除该用户吗？')">删除</a>
             `

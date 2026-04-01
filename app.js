@@ -1298,7 +1298,10 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
 </div>
 
 <script>
-window.addEventListener("DOMContentLoaded", () => {
+function $(id) {
+  return document.getElementById(id);
+}
+
 async function autoFillCompetitors() {
   const name = document.getElementById("productName").value.trim();
   if (!name) return alert("先输入产品名称");
@@ -1312,11 +1315,13 @@ async function autoFillCompetitors() {
   const data = await res.json();
 
   for (let i = 0; i < data.length; i++) {
-    document.getElementById("competitor" + (i + 1) + "Name").value = data[i].cn;
-    document.getElementById("competitor" + (i + 1) + "Link").value = data[i].link;
-    document.getElementById("competitor" + (i + 1) + "Price").value = data[i].price;
+    document.getElementById("competitor" + (i + 1) + "Name").value = data[i].cn || "";
+    document.getElementById("competitor" + (i + 1) + "Link").value = data[i].link || "";
+    document.getElementById("competitor" + (i + 1) + "Price").value = data[i].price || "";
   }
 }
+
+window.addEventListener("DOMContentLoaded", () => {
 
 const codeInput = document.getElementById("productCode");
 if (codeInput && (!codeInput.value || codeInput.value === "自动生成")) {
@@ -1327,26 +1332,30 @@ if (codeInput && (!codeInput.value || codeInput.value === "自动生成")) {
   const rand = Math.floor(Math.random() * 900 + 100);
   codeInput.value = "" + y + m + d + rand;
 }
-  if (!$("expressUnitPrice").value) {
-    $("expressUnitPrice").value = localStorage.getItem("expressUnitPrice") || "";
-  }
-  if (!$("airUnitPrice").value) {
-    $("airUnitPrice").value = localStorage.getItem("airUnitPrice") || "";
-  }
-  if (!$("seaUnitPrice").value) {
-    $("seaUnitPrice").value = localStorage.getItem("seaUnitPrice") || "";
-  }
 
-  if (!$("expressTax").value) $("expressTax").value = "1";
-  if (!$("airTax").value) $("airTax").value = "1";
-  if (!$("seaTax").value) $("seaTax").value = "1";
+if ($("expressUnitPrice") && !$("expressUnitPrice").value) {
+  $("expressUnitPrice").value = localStorage.getItem("expressUnitPrice") || "";
+}
+if ($("airUnitPrice") && !$("airUnitPrice").value) {
+  $("airUnitPrice").value = localStorage.getItem("airUnitPrice") || "";
+}
+if ($("seaUnitPrice") && !$("seaUnitPrice").value) {
+  $("seaUnitPrice").value = localStorage.getItem("seaUnitPrice") || "";
+}
 
+if ($("expressTax") && !$("expressTax").value) $("expressTax").value = "1";
+if ($("airTax") && !$("airTax").value) $("airTax").value = "1";
+if ($("seaTax") && !$("seaTax").value) $("seaTax").value = "1";
+
+if (typeof calcAll === "function") {
   calcAll();
+}
 
-  if (!$("exchangeRate").value) {
-    fetchRate();
-  }
+if ($("exchangeRate") && !$("exchangeRate").value) {
+  fetchRate();
+}
 });
+
 </script>
 
 <script>
@@ -1379,18 +1388,6 @@ function fillCompetitors(){
     document.getElementById("competitor"+i+"Name").value = name + "竞品"+i;
     document.getElementById("competitor"+i+"Link").value = url;
   }
-}
-</script>
-<script>
-function fetchRate() {
-  fetch("https://open.er-api.com/v6/latest/USD")
-    .then(res => res.json())
-    .then(data => {
-      const rate = data.rates.CNY;
-      document.getElementById("exchangeRate").value = (rate * 0.9).toFixed(4);
-      if (typeof calcAll === "function") calcAll();
-    })
-    .catch(() => alert("汇率获取失败"));
 }
 </script>
 </body>

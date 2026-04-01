@@ -869,16 +869,16 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
       resize: vertical;
       padding-top: 6px;
     }
-    .readonly-red {
-  border: 1px solid #ff3b30;
-  background: #111111;
-  color: #ffffff;
+.readonly-red {
+  border: 1px solid #ff6b6b;
+  background: #ededed;
+  color: #222;
 }
 
 .readonly-gray {
-  border: 1px solid #ff3b30;
-  background: #111111;
-  color: #ffffff;
+  border: 1px solid #d8d8d8;
+  background: #f7f7f7;
+  color: #222;
 }
     .photo-box {
       height: 290px;
@@ -1292,11 +1292,11 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
 </div>
 <!-- 竞品区 END -->
 
-      <div class="submit-wrap">
-        <button class="submit-btn" type="submit">${buttonText}</button>
-      </div>
-   
+<div class="submit-wrap">
+  <button class="submit-btn" type="submit">${buttonText}</button>
+</div>
 
+<script>
 window.addEventListener("DOMContentLoaded", () => {
   if (!$("expressUnitPrice").value) {
     $("expressUnitPrice").value = localStorage.getItem("expressUnitPrice") || "";
@@ -1318,7 +1318,7 @@ window.addEventListener("DOMContentLoaded", () => {
     fetchRate();
   }
 });
-  </script>
+</script>
 
 <script>
 function fillCompetitors(){

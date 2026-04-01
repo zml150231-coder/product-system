@@ -7,6 +7,7 @@ const session = require("express-session");
 const multer = require("multer");
 const PDFDocument = require("pdfkit");
 const XLSX = require("xlsx");
+const cron = require("node-cron");
 const app = express();
 const ROOT = __dirname;
 const UPLOAD_DIR = path.join(ROOT, "uploads");
@@ -96,6 +97,77 @@ function deletePhotoFile(fileName) {
       console.error("删除照片失败:", err);
     }
   }
+}
+
+function generateWeeklySummaryPdf(callback) {
+  const now = new Date();
+
+  const day = now.getDay();
+  const end = new Date(now);
+  end.setDate(now.getDate() - day + 6);
+  end.setHours(23, 59, 59, 999);
+
+  const start = new Date(end);
+  start.setDate(end.getDate() - 6);
+  start.setHours(0, 0, 0, 0);
+
+  const startStr = start.toISOString().slice(0, 19).replace("T", " ");
+  const endStr = end.toISOString().slice(0, 19).replace("T", " ");
+
+  db.all(
+    `
+    SELECT 
+      u.id as userId,
+      u.username,
+      COUNT(p.id) as totalAdded,
+      SUM(CASE WHEN p.approveStatus='approved' THEN 1 ELSE 0 END) as totalApproved
+    FROM users u
+    LEFT JOIN products p
+      ON u.id = p.ownerUserId
+      AND p.createdAt BETWEEN ? AND ?
+    WHERE u.is_admin = 0
+    GROUP BY u.id, u.username
+    ORDER BY u.username
+    `,
+    [startStr, endStr],
+    (err, rows) => {
+      if (err) return callback(err);
+
+      const pdfName = `weekly-summary-${Date.now()}.pdf`;
+      const pdfPath = path.join(ROOT, pdfName);
+      const doc = new PDFDocument({ margin: 50 });
+      const stream = fs.createWriteStream(pdfPath);
+      doc.pipe(stream);
+
+      doc.fontSize(20).text("每周产品汇总", { align: "center" });
+      doc.moveDown();
+
+      rows.forEach((row, index) => {
+        const totalAdded = Number(row.totalAdded || 0);
+        const totalApproved = Number(row.totalApproved || 0);
+        const rate = totalAdded
+          ? ((totalApproved / totalAdded) * 100).toFixed(2) + "%"
+          : "0%";
+
+        doc.fontSize(14).text(`用户${index + 1} ID：${row.username}`);
+        doc.text(`增加产品表单数量：${totalAdded}`);
+        doc.text(`通过的数量：${totalApproved}`);
+        doc.text(`通过的百分比：${rate}`);
+        doc.moveDown();
+      });
+
+      doc.end();
+
+      stream.on("finish", () => {
+        db.run(
+          `INSERT INTO weekly_reports (weekStart, weekEnd, pdfPath, createdBy)
+           VALUES (?, ?, ?, ?)`,
+          [startStr, endStr, pdfName, "system"],
+          (e) => callback(e, pdfName)
+        );
+      });
+    }
+  );
 }
 
 db.serialize(() => {
@@ -420,6 +492,39 @@ app.get("/reject-product/:id", checkLogin, checkAdmin, (req, res) => {
   );
 });
 
+app.get("/inbox", checkLogin, checkAdmin, (req, res) => {
+  db.all(
+    `SELECT * FROM weekly_reports ORDER BY createdAt DESC`,
+    [],
+    (err, rows) => {
+      if (err) return res.send(err.message);
+
+      res.send(`
+        <h2>管理员收件箱</h2>
+        ${renderTopButtons(req.session.user)}
+
+        <table border="1" cellpadding="10">
+          <tr>
+            <th>周开始</th>
+            <th>周结束</th>
+            <th>时间</th>
+            <th>PDF</th>
+          </tr>
+
+          ${rows.map(r => `
+            <tr>
+              <td>${r.weekStart}</td>
+              <td>${r.weekEnd}</td>
+              <td>${r.createdAt}</td>
+              <td><a href="/${r.pdfPath}" target="_blank">查看</a></td>
+            </tr>
+          `).join("")}
+        </table>
+      `);
+    }
+  );
+});
+
 function blueBtn(href, text) {
   return `<a href="${href}" style="
     display:inline-block;
@@ -436,10 +541,11 @@ function blueBtn(href, text) {
 function renderTopButtons(user) {
   return `
     <div style="margin-bottom:20px;">
-      ${blueBtn("/list", "产品列表")}
       ${blueBtn("/form", "新增表单")}
+      ${blueBtn("/list", "产品列表")}
       ${user && user.is_admin ? blueBtn("/users", "查看用户") : ""}
       ${blueBtn("/logout", "退出登录")}
+      ${user && user.is_admin ? blueBtn("/inbox", "收件箱") : ""}
     </div>
   `;
 }
@@ -2354,6 +2460,11 @@ app.get("/users", checkLogin, checkAdmin, (_req, res) => {
       `);
     }
   );
+});
+
+cron.schedule("0 18 * * 6", () => {
+  console.log("开始生成周报...");
+  generateWeeklySummaryPdf();
 });
 
 const PORT = process.env.PORT || 3000;

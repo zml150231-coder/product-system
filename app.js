@@ -500,11 +500,55 @@ app.get("/inbox", checkLogin, checkAdmin, (req, res) => {
     (err, rows) => {
       if (err) return res.send(err.message);
 
-      res.send(`
-        <h2>管理员收件箱</h2>
-        ${renderTopButtons(req.session.user)}
+     res.send(`
+  <h2>管理员收件箱</h2>
+  ${renderTopButtons(req.session.user)}
 
-        <table border="1" cellpadding="10">
+  <div style="margin: 12px 0;">
+    <a href="/generate-weekly-pdf"
+       style="
+         display:inline-block;
+         background:#2f6fed;
+         color:#fff;
+         text-decoration:none;
+         padding:10px 16px;
+         border-radius:4px;
+         font-size:14px;
+       "
+       onclick="return confirm('确定立即生成一份新的汇总PDF吗？')"
+    >
+      立即生成汇总PDF
+    </a>
+  </div>
+
+  <table border="1" cellpadding="10">
+    <tr>
+      <th>周开始</th>
+      <th>周结束</th>
+      <th>时间</th>
+      <th>PDF</th>
+    </tr>
+
+    ${rows.map(r => `
+      <tr>
+        <td>${r.weekStart}</td>
+        <td>${r.weekEnd}</td>
+        <td>${r.createdAt}</td>
+        <td><a href="/${r.pdfPath}" target="_blank">查看</a></td>
+      </tr>
+    `).join("")}
+  </table>
+`);
+
+      app.get("/generate-weekly-pdf", checkLogin, checkAdmin, (req, res) => {
+  generateWeeklySummaryPdf((err, pdfName) => {
+    if (err) {
+      return res.send("生成PDF失败：" + err.message);
+    }
+    res.redirect("/inbox");
+  });
+});
+      
           <tr>
             <th>周开始</th>
             <th>周结束</th>
@@ -2377,7 +2421,7 @@ app.get("/reject-user/:id", checkAdmin, (req, res) => {
   
 app.get("/users", checkLogin, checkAdmin, (_req, res) => {
   db.all(
-   "SELECT id, username, password_plain, is_admin, approval_status, created_at, last_login_at, last_edit_at FROM users ORDER BY id ASC",
+    "SELECT id, username, password_plain, is_admin, approval_status, created_at, last_login_at, last_edit_at FROM users ORDER BY id ASC",
     [],
     (err, rows) => {
       if (err) {
@@ -2393,7 +2437,7 @@ app.get("/users", checkLogin, checkAdmin, (_req, res) => {
           <style>
             body { font-family: Arial,"Microsoft YaHei"; padding:20px; background:#fff; }
             table { width:100%; border-collapse:collapse; margin-top:20px; }
-            th,td { border:1px solid #ccc; padding:10px; text-align:left; }
+            th, td { border:1px solid #ccc; padding:10px; text-align:left; }
             th { background:#f1f1f1; }
             a { color:blue; text-decoration:none; }
           </style>
@@ -2403,7 +2447,7 @@ app.get("/users", checkLogin, checkAdmin, (_req, res) => {
           ${renderTopButtons({ is_admin: true })}
           <table>
             <tr>
-              <th>产品图片</th>
+              <th>ID</th>
               <th>用户名</th>
               <th>密码</th>
               <th>角色</th>
@@ -2412,68 +2456,48 @@ app.get("/users", checkLogin, checkAdmin, (_req, res) => {
               <th>最后编辑时间</th>
               <th>操作</th>
             </tr>
-           ${rows.map(row => `
-<tr>
-    <td>${row.id}</td>
-    <td>
-  ${
-    row.is_admin
-      ? esc(row.username)
-      : `<a href="/user-products/${row.id}" style="color:#2f6fed;font-weight:bold;text-decoration:none;">${esc(row.username)}</a>`
-  }
-</td>
-    <td>${esc(row.password_plain)}</td>
-    <td>${row.is_admin ? "管理员" : "普通用户"}</td>
-    <td>${esc(row.approval_status || "pending")}</td>
-    <td>
-  ${
-    row.is_admin
-      ? ""
-      : row.approval_status === "pending"
-      ? `
-        ⏳ 待审核
-        &nbsp;&nbsp;
-        <a href="/approve-user/${row.id}?status=approved">✅ 通过</a>
-        &nbsp;&nbsp;
-        <a href="/reject-user/${row.id}">❌ 不通过</a>
-        &nbsp;&nbsp;
-        <a href="/delete-user/${row.id}" onclick="return confirm('确定删除该用户吗？')">删除</a>
-      `
-      : row.approval_status === "approved"
-      ? `✅ 已通过`
-      : `❌ 未通过`
-  }
-</td>
-<td>
-  ${
-    row.approval_status === "approved"
-      ? "✅ 通过"
-      : row.approval_status === "rejected"
-      ? "❌ 不通过"
-      : "⏳ 待审核"
-  }
-</td>
-    <td>${esc(formatTimeCN(row.last_login_at))}</td>
-    <td>${esc(formatTimeCN(row.last_edit_at))}</td>
-    <td>
-      ${
-        row.is_admin
-          ? ""
-          : row.approval_status === "pending"
-            ? `
-             <a href="/approve-user/${row.id}">通过</a>
-&nbsp;&nbsp;
-<a href="/reject-user/${row.id}">不通过</a>
-              &nbsp;|&nbsp;
-              <a href="/delete-user/${row.id}" onclick="return confirm('确定删除该用户吗？')">删除</a>
-            `
-            : `
-              <a href="/delete-user/${row.id}" onclick="return confirm('确定删除该用户吗？')">删除</a>
-            `
-      }
-    </td>
-  </tr>
-`).join("")}
+            ${rows.map(row => `
+              <tr>
+                <td>${row.id}</td>
+                <td>
+                  ${
+                    row.is_admin
+                      ? esc(row.username)
+                      : `<a href="/user-products/${row.id}" style="color:#2f6fed;font-weight:bold;text-decoration:none;">${esc(row.username)}</a>`
+                  }
+                </td>
+                <td>${esc(row.password_plain || "")}</td>
+                <td>${row.is_admin ? "管理员" : "普通用户"}</td>
+                <td>
+                  ${
+                    row.approval_status === "approved"
+                      ? "✅ 通过"
+                      : row.approval_status === "rejected"
+                      ? "❌ 不通过"
+                      : "⏳ 待审核"
+                  }
+                </td>
+                <td>${esc(formatTimeCN(row.last_login_at))}</td>
+                <td>${esc(formatTimeCN(row.last_edit_at))}</td>
+                <td>
+                  ${
+                    row.is_admin
+                      ? ""
+                      : row.approval_status === "pending"
+                      ? `
+                        <a href="/approve-user/${row.id}">✅ 通过</a>
+                        &nbsp;|&nbsp;
+                        <a href="/reject-user/${row.id}">❌ 不通过</a>
+                        &nbsp;|&nbsp;
+                        <a href="/delete-user/${row.id}" onclick="return confirm('确定删除该用户吗？')">删除</a>
+                      `
+                      : `
+                        <a href="/delete-user/${row.id}" onclick="return confirm('确定删除该用户吗？')">删除</a>
+                      `
+                  }
+                </td>
+              </tr>
+            `).join("")}
           </table>
         </body>
         </html>

@@ -157,6 +157,17 @@ function generateWeeklySummaryPdf(callback) {
         doc.text(`增加产品表单数量：${totalAdded}`);
         doc.text(`通过的数量：${totalApproved}`);
         doc.text(`通过的百分比：${rate}`);
+        db.all(
+  `SELECT productName FROM products 
+   WHERE ownerUserId=? 
+   AND approveStatus='approved' 
+   AND createdAt BETWEEN ? AND ?`,
+  [row.userId, startStr, endStr],
+  (e2, list)=>{
+    const names = (list||[]).map(x=>x.productName).join("、") || "无";
+    doc.text(`通过的产品：${names}`);
+  }
+);
         doc.moveDown();
       });
 
@@ -299,7 +310,8 @@ db.run(`ALTER TABLE products ADD COLUMN competitor3Price TEXT`, ()=>{});
 
 // 为了按图片规则计算，必须补一个尺寸分段字段
 db.run(`ALTER TABLE products ADD COLUMN sizeTier TEXT`, ()=>{});
-
+db.run(`ALTER TABLE products ADD COLUMN changedFields TEXT`, ()=>{});
+  
 db.run(`
   CREATE TABLE IF NOT EXISTS weekly_reports (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -763,6 +775,10 @@ function renderRegisterPage(message = "") {
 }
 
 function renderFormPage({ mode, user, row = {} }) {
+  const changed = JSON.parse(row.changedFields||"[]");
+function red(name){
+  return changed.includes(name) ? "changed" : "";
+}
   const isEdit = mode === "edit";
   const action = isEdit ? `/update/${row.id}` : "/save";
   const title = isEdit ? "Product Development Record Sheet - 编辑表单" : "Product Development Record Sheet - 新增表单";
@@ -787,6 +803,10 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
       font-family: Arial, "Microsoft YaHei", sans-serif;
       background: #ffffff;
       color: #222;
+    }
+    .changed{
+    border:2px solid red !important;
+    color:red !important;
     }
     .topbar {
       background: #ffffff;
@@ -1223,6 +1243,55 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
         </table>
       </div>
 
+      <!-- 竞品区 START -->
+<div class="section">
+  <table class="layout">
+    <tr>
+      <td colspan="5" class="title-bar">竞品信息</td>
+    </tr>
+
+    <tr>
+      <th>竞品</th>
+      <th>名称</th>
+      <th>链接</th>
+      <th>图片</th>
+      <th>价格</th>
+    </tr>
+
+    <tr>
+      <td class="label">竞品1</td>
+      <td><input class="input" name="competitor1Name" id="competitor1Name" value="${esc(row.competitor1Name||"")}" /></td>
+      <td><input class="input" name="competitor1Link" id="competitor1Link" value="${esc(row.competitor1Link||"")}" /></td>
+      <td><input class="input" name="competitor1Image" id="competitor1Image" value="${esc(row.competitor1Image||"")}" /></td>
+      <td><input class="input" name="competitor1Price" id="competitor1Price" value="${esc(row.competitor1Price||"")}" /></td>
+    </tr>
+
+    <tr>
+      <td class="label">竞品2</td>
+      <td><input class="input" name="competitor2Name" id="competitor2Name" value="${esc(row.competitor2Name||"")}" /></td>
+      <td><input class="input" name="competitor2Link" id="competitor2Link" value="${esc(row.competitor2Link||"")}" /></td>
+      <td><input class="input" name="competitor2Image" id="competitor2Image" value="${esc(row.competitor2Image||"")}" /></td>
+      <td><input class="input" name="competitor2Price" id="competitor2Price" value="${esc(row.competitor2Price||"")}" /></td>
+    </tr>
+
+    <tr>
+      <td class="label">竞品3</td>
+      <td><input class="input" name="competitor3Name" id="competitor3Name" value="${esc(row.competitor3Name||"")}" /></td>
+      <td><input class="input" name="competitor3Link" id="competitor3Link" value="${esc(row.competitor3Link||"")}" /></td>
+      <td><input class="input" name="competitor3Image" id="competitor3Image" value="${esc(row.competitor3Image||"")}" /></td>
+      <td><input class="input" name="competitor3Price" id="competitor3Price" value="${esc(row.competitor3Price||"")}" /></td>
+    </tr>
+
+    <tr>
+      <td class="label">自动生成</td>
+      <td colspan="4">
+        <button type="button" class="small-btn" onclick="fillCompetitors()">自动生成Amazon搜索链接</button>
+      </td>
+    </tr>
+  </table>
+</div>
+<!-- 竞品区 END -->
+
       <div class="submit-wrap">
         <button class="submit-btn" type="submit">${buttonText}</button>
       </div>
@@ -1250,6 +1319,21 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 });
   </script>
+
+<script>
+function fillCompetitors(){
+  const name = document.getElementById("productName").value;
+  if(!name) return alert("先填产品名称");
+
+  const url = "https://www.amazon.com/s?k=" + encodeURIComponent(name);
+
+  for(let i=1;i<=3;i++){
+    document.getElementById("competitor"+i+"Name").value = name + "竞品"+i;
+    document.getElementById("competitor"+i+"Link").value = url;
+  }
+}
+</script>
+
 </body>
 </html>
   `;
@@ -1446,6 +1530,7 @@ app.post("/save", checkLogin, upload.single("photo"), (req, res) => {
       d.warehouseUsd || "",
       d.deliveryUsd || "",
       d.adCostRmb || "",
+      changedFields=?,
       photoPath,
       u.id,
       u.username,
@@ -1678,7 +1763,7 @@ app.get("/list", checkLogin, (req, res) => {
 
         <script>
           function toggleDateRange() {
-            const mode = document.getElementById("dateMode").value;
+            const mode = document.("dateMode").value;
             document.getElementById("dateRangeBox").style.display =
               mode === "range" ? "inline-block" : "none";
           }
@@ -1835,9 +1920,17 @@ app.post("/update/:id", checkLogin, upload.single("photo"), (req, res) => {
 
     const d = req.body;
 
+    const changedFields = [];
+for(let k in d){
+  if(String(d[k]) !== String(oldRow[k]||"")){
+    changedFields.push(k);
+  }
+}
+
     const sql = `
       UPDATE products SET
-        formName = ?, productName = ?, productCode = ?, exchangeRate = ?, purchaseCost = ?, commissionRate = ?,
+      
+        formName = ?, productName = ?, productCode = ?, exchangeRate = ?, purchaseCost = ?, commissionRate = ?,changedFields=?,
         fenxiaoPrice = ?, adRate = ?, profitCostDiff = ?, profitRate1 = ?,
         sellingPriceUsd = ?, sellingPriceRmb = ?, profitSellDiff = ?, profitRate2 = ?,
         remark = ?, packageType = ?,

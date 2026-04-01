@@ -1211,13 +1211,12 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
             <td class="label">佣金(RMB)</td>
             <td><input class="input readonly-gray" type="number" step="0.001" name="commissionRmb" id="commissionRmb" value="${esc(row.commissionRmb || "")}" /></td>
             <td class="label">退货成本(RMB)</td>
-            <td><input class="input calc" type="number" step="0.001" name="returnCostRmb" id="returnCostRmb" value="${esc(row.returnCostRmb || "")}" /></td>
-          </tr>
+            <td><input class="input readonly-gray" type="number" step="0.001" name="returnCostRmb" id="returnCostRmb" value="${esc(row.returnCostRmb || "")}" /></td>
           <tr>
             <td class="label">仓租(USD)</td>
-            <td><input class="input calc" type="number" step="0.001" name="warehouseUsd" id="warehouseUsd" value="${esc(row.warehouseUsd || "")}" /></td>
+            <td><input class="input readonly-gray" type="number" step="0.001" name="warehouseUsd" id="warehouseUsd" value="${esc(row.warehouseUsd || "")}" /></td>
             <td class="label">配送+分拨(USD)</td>
-            <td><input class="input calc" type="number" step="0.001" name="deliveryUsd" id="deliveryUsd" value="${esc(row.deliveryUsd || "")}" /></td>
+            <td><input class="input readonly-gray" type="number" step="0.001" name="deliveryUsd" id="deliveryUsd" value="${esc(row.deliveryUsd || "")}" /></td>
             <td class="label">广告费(RMB)</td>
             <td><input class="input readonly-gray" type="number" step="0.001" name="adCostRmb" id="adCostRmb" value="${esc(row.adCostRmb || "")}" /></td>
           </tr>
@@ -1230,6 +1229,42 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
     </form>
 
 <script>
+
+function calcFbaFeeUsd() {
+  const tier = $("sizeTier")?.value;
+
+  const length = num("lengthCm");
+  const width = num("widthCm");
+  const height = num("heightCm");
+
+  const actualWeight = num("actualWeight");
+
+  // 体积重（磅）
+  const volumeWeight = (length * width * height) / 139 / 2.2046;
+
+  const chargeWeight = Math.max(actualWeight, volumeWeight);
+
+  let fee = 0;
+
+  if (tier === "small_standard") {
+    fee = 2.5;
+  } else if (tier === "large_standard") {
+    fee = 3.5;
+  } else if (tier === "large_bulky") {
+    fee = 5;
+  } else if (tier === "oversize_0_50") {
+    fee = 8;
+  } else if (tier === "oversize_50_70") {
+    fee = 35;
+  } else if (tier === "oversize_70_150") {
+    fee = 50;
+  } else if (tier === "oversize_150_plus") {
+    fee = 150;
+  }
+
+  return fee;
+}
+
 function num(id){
   return parseFloat(document.getElementById(id)?.value || 0);
 }
@@ -1355,6 +1390,61 @@ setVal("warehouseUsd", warehouseUsd);
       el.value = value.toFixed(digits);
     }
 
+function getPriceTier(sellingPriceUsd) {
+  if (sellingPriceUsd < 10) return "lt10";
+  if (sellingPriceUsd <= 50) return "10to50";
+  return "gt50";
+}
+
+function calcFbaFeeUsd(sizeTier, actualWeightKg, lengthCm, widthCm, heightCm, sellingPriceUsd) {
+  const priceTier = getPriceTier(sellingPriceUsd);
+
+  const lengthIn = lengthCm / 2.54;
+  const widthIn = widthCm / 2.54;
+  const heightIn = heightCm / 2.54;
+
+  const actualWeightLb = actualWeightKg * 2.20462;
+  const volumeWeightLb139 = (lengthIn * widthIn * heightIn) / 139;
+
+  const chargeWeightLb =
+    sizeTier === "small_standard" || sizeTier === "oversize_150_plus"
+      ? actualWeightLb
+      : Math.max(actualWeightLb, volumeWeightLb139);
+
+  const oz = chargeWeightLb * 16;
+
+  if (sizeTier === "small_standard") {
+    if (oz <= 2) return priceTier === "lt10" ? 2.43 : priceTier === "10to50" ? 3.32 : 3.58;
+    if (oz <= 4) return priceTier === "lt10" ? 2.49 : priceTier === "10to50" ? 3.42 : 3.68;
+    if (oz <= 6) return priceTier === "lt10" ? 2.56 : priceTier === "10to50" ? 3.54 : 3.80;
+    if (oz <= 8) return priceTier === "lt10" ? 2.77 : priceTier === "10to50" ? 3.68 : 3.94;
+    if (oz <= 10) return priceTier === "lt10" ? 2.82 : priceTier === "10to50" ? 3.78 : 4.04;
+    if (oz <= 12) return priceTier === "lt10" ? 2.92 : priceTier === "10to50" ? 3.91 : 4.17;
+    return priceTier === "lt10" ? 2.95 : priceTier === "10to50" ? 3.96 : 4.22;
+  }
+
+  if (sizeTier === "large_standard") {
+    if (chargeWeightLb <= 0.25) return priceTier === "lt10" ? 2.91 : priceTier === "10to50" ? 3.73 : 3.99;
+    if (chargeWeightLb <= 0.5) return priceTier === "lt10" ? 3.13 : priceTier === "10to50" ? 3.95 : 4.21;
+    if (chargeWeightLb <= 0.75) return priceTier === "lt10" ? 3.38 : priceTier === "10to50" ? 4.20 : 4.46;
+    if (chargeWeightLb <= 1) return priceTier === "lt10" ? 3.78 : priceTier === "10to50" ? 4.60 : 4.86;
+    if (chargeWeightLb <= 1.25) return priceTier === "lt10" ? 4.22 : priceTier === "10to50" ? 5.04 : 5.30;
+    if (chargeWeightLb <= 1.5) return priceTier === "lt10" ? 4.60 : priceTier === "10to50" ? 5.42 : 5.68;
+    if (chargeWeightLb <= 1.75) return priceTier === "lt10" ? 4.75 : priceTier === "10to50" ? 5.57 : 5.83;
+    if (chargeWeightLb <= 2) return priceTier === "lt10" ? 5.00 : priceTier === "10to50" ? 5.82 : 6.08;
+    if (chargeWeightLb <= 2.25) return priceTier === "lt10" ? 5.10 : priceTier === "10to50" ? 5.92 : 6.18;
+    if (chargeWeightLb <= 2.5) return priceTier === "lt10" ? 5.28 : priceTier === "10to50" ? 6.10 : 6.36;
+    if (chargeWeightLb <= 2.75) return priceTier === "lt10" ? 5.44 : priceTier === "10to50" ? 6.26 : 6.52;
+    if (chargeWeightLb <= 3) return priceTier === "lt10" ? 5.85 : priceTier === "10to50" ? 6.67 : 6.93;
+
+    const base = priceTier === "lt10" ? 6.15 : priceTier === "10to50" ? 6.97 : 7.23;
+    const extraLb = chargeWeightLb - 3;
+    return base + Math.ceil(extraLb / 0.25) * 0.08;
+  }
+
+  return 0;
+}
+
    function calcAll() {
   const exchangeRate = num("exchangeRate");
   const purchaseCost = num("purchaseCost");
@@ -1363,10 +1453,15 @@ setVal("warehouseUsd", warehouseUsd);
   const adRate = num("adRate");
   const sellingPriceUsd = num("sellingPriceUsd");
 
+  const rate = num("exchangeRate");
+  const fbaUsd = calcFbaFeeUsd();
+  setVal("fbaFeeRmb", fbaUsd * rate);
+
   const length = num("lengthCm");
   const width = num("widthCm");
   const height = num("heightCm");
   const actualWeight = num("actualWeight");
+  const sizeTier = $("sizeTier") ? $("sizeTier").value : "";
 
   const expressUnitPrice = num("expressUnitPrice");
   const expressTax = $("expressTax").value === "" ? 1 : num("expressTax");
@@ -1377,10 +1472,30 @@ setVal("warehouseUsd", warehouseUsd);
   const seaUnitPrice = num("seaUnitPrice");
   const seaTax = $("seaTax").value === "" ? 1 : num("seaTax");
 
-  const fbaFeeRmb = num("fbaFeeRmb");
-  const returnCostRmb = num("returnCostRmb");
-  const warehouseUsd = num("warehouseUsd");
-  const deliveryUsd = num("deliveryUsd");
+  // ===== FBA费用(RMB) =====
+const fbaFeeUsd = calcFbaFeeUsd(sizeTier, actualWeight, length, width, height, sellingPriceUsd);
+const fbaFeeRmb = fbaFeeUsd * exchangeRate;
+setVal("fbaFeeRmb", fbaFeeRmb);
+
+// ===== 仓租(USD) =====
+const lengthIn = length / 2.54;
+const widthIn = width / 2.54;
+const heightIn = height / 2.54;
+const cubicFeet = (lengthIn * widthIn * heightIn) / 1728;
+const warehouseUsd = cubicFeet * 0.78;
+setVal("warehouseUsd", warehouseUsd);
+
+// ===== 配送+分拨(USD) =====
+const deliveryUsd = 0;
+setVal("deliveryUsd", deliveryUsd);
+
+// ===== 退货成本(RMB) =====
+let returnCostRmb = commissionRmb * 0.2;
+const maxReturnCostRmb = 5 * exchangeRate;
+if (returnCostRmb > maxReturnCostRmb) {
+  returnCostRmb = maxReturnCostRmb;
+}
+setVal("returnCostRmb", returnCostRmb);
 
   // 1) 销售价 RMB
   const sellingPriceRmb = sellingPriceUsd * exchangeRate;

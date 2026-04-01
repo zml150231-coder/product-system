@@ -337,149 +337,7 @@ app.get("/delete-user/:id", checkLogin, checkAdmin, (req, res) => {
         }
       });
 
-      app.get("/approve-product/:id", checkLogin, checkAdmin, (req, res) => {
-  const id = Number(req.params.id);
-  const status = req.query.status === "approved" ? "approved" : "rejected";
-
-  db.run(
-    `UPDATE products
-     SET approveStatus = ?, approvedBy = ?, approvedAt = datetime('now','localtime')
-     WHERE id = ?`,
-    [status, req.session.user.username, id],
-    (err) => {
-      if (err) return res.send("更新失败：" + err.message);
-      res.redirect("/list");
-    }
-  );
-});
-
-app.get("/approve-user/:id", checkLogin, checkAdmin, (req, res) => {
-  const id = Number(req.params.id);
-  const status = req.query.status === "approved" ? "approved" : "rejected";
-
-  db.run(
-    `UPDATE users
-     SET approval_status = ?, approved_by = ?, approved_at = datetime('now','localtime')
-     WHERE id = ?`,
-    [status, req.session.user.username, id],
-    (err) => {
-      if (err) return res.send("审核失败：" + err.message);
-      res.redirect("/users");
-    }
-  );
-});
-
-app.get("/user-products/:userId", checkLogin, checkAdmin, (req, res) => {
-  const userId = Number(req.params.userId);
-
-  if (!userId) {
-    return res.send("用户ID无效");
-  }
-
-  db.get("SELECT * FROM users WHERE id = ?", [userId], (err, userRow) => {
-    if (err) {
-      return res.send("查询用户失败：" + err.message);
-    }
-    if (!userRow) {
-      return res.send("用户不存在");
-    }
-
-    db.all(
-      `SELECT * FROM products
-       WHERE ownerUserId = ?
-       ORDER BY updatedAt DESC`,
-      [userId],
-      (err2, rows) => {
-        if (err2) {
-          return res.send("查询产品失败：" + err2.message);
-        }
-
-        res.send(`
-          <!DOCTYPE html>
-          <html lang="zh-CN">
-          <head>
-            <meta charset="UTF-8">
-            <title>${esc(userRow.username)} 的产品列表</title>
-            <style>
-              body{
-                font-family:Arial,"Microsoft YaHei",sans-serif;
-                background:#fff;
-                margin:20px;
-              }
-              table{
-                width:100%;
-                border-collapse:collapse;
-                margin-top:20px;
-              }
-              th,td{
-                border:1px solid #ccc;
-                padding:10px;
-                text-align:center;
-              }
-              th{
-                background:#f3f3f3;
-              }
-              a{
-                color:#2f6fed;
-                text-decoration:none;
-              }
-              .top{
-                margin-bottom:20px;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="top">
-              <h2>${esc(userRow.username)} 的产品列表</h2>
-              ${renderTopButtons(req.session.user)}
-            </div>
-
-            <table>
-              <tr>
-                <th>产品图片</th>
-                <th>表单名称</th>
-                <th>产品名称</th>
-                <th>产品编号</th>
-                <th>利润率</th>
-                <th>是否通过</th>
-                <th>最后更新时间</th>
-                <th>操作</th>
-              </tr>
-
-              ${rows.map(row => `
-                <tr>
-                  <td>
-                    ${
-                      row.photoPath
-                        ? `<img src="/uploads/${esc(row.photoPath)}" style="width:60px;height:60px;object-fit:cover;">`
-                        : "无图片"
-                    }
-                  </td>
-                  <td>${esc(row.formName || "")}</td>
-                  <td>${esc(row.productName || "")}</td>
-                  <td>${esc(row.productCode || "")}</td>
-                  <td>${esc(row.seaProfitRate || "")}%</td>
-                  <td>
-                    ${
-                      row.approveStatus === "approved"
-                        ? "✅ 通过"
-                        : row.approveStatus === "rejected"
-                        ? "❌ 不通过"
-                        : "⏳ 待审核"
-                    }
-                  </td>
-                  <td>${esc(formatTimeCN(row.updatedAt))}</td>
-                  <td><a href="/edit/${row.id}">查看/编辑</a></td>
-                </tr>
-              `).join("")}
-            </table>
-          </body>
-          </html>
-        `);
-      }
-    );
-  });
-});
+    
 
       db.run("DELETE FROM products WHERE ownerUserId = ?", [userId], function (err3) {
         if (err3) {
@@ -496,6 +354,71 @@ app.get("/user-products/:userId", checkLogin, checkAdmin, (req, res) => {
       });
     });
   });
+});
+
+app.get("/approve-user/:id", checkLogin, checkAdmin, (req, res) => {
+  const id = req.params.id;
+  db.run(
+    `UPDATE users SET approval_status='approved', approved_by=?, approved_at=datetime('now','localtime') WHERE id=?`,
+    [req.session.user.username, id],
+    () => {
+      res.redirect("/users");
+    }
+  );
+});
+
+app.get("/reject-user/:id", checkLogin, checkAdmin, (req, res) => {
+  const id = req.params.id;
+  db.run(
+    `UPDATE users SET approval_status='rejected' WHERE id=?`,
+    [id],
+    () => {
+      res.redirect("/users");
+    }
+  );
+});
+
+app.get("/user-products/:userId", checkLogin, checkAdmin, (req, res) => {
+  const userId = req.params.userId;
+
+  db.all("SELECT * FROM products WHERE ownerUserId = ?", [userId], (err, rows) => {
+    if (err) return res.send(err.message);
+
+    let html = "<h2>该用户的产品</h2>";
+
+    rows.forEach(r => {
+      html += `<div>
+        ${r.productName || ""}
+        <a href="/detail/${r.id}">查看</a>
+      </div>`;
+    });
+
+    res.send(html);
+  });
+});
+
+app.get("/approve-product/:id", checkLogin, checkAdmin, (req, res) => {
+  const id = req.params.id;
+
+  db.run(
+    `UPDATE products SET approveStatus='approved', approvedBy=?, approvedAt=datetime('now','localtime') WHERE id=?`,
+    [req.session.user.username, id],
+    () => {
+      res.redirect("/list");
+    }
+  );
+});
+
+app.get("/reject-product/:id", checkLogin, checkAdmin, (req, res) => {
+  const id = req.params.id;
+
+  db.run(
+    `UPDATE products SET approveStatus='rejected' WHERE id=?`,
+    [id],
+    () => {
+      res.redirect("/list");
+    }
+  );
 });
 
 function blueBtn(href, text) {

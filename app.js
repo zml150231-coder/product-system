@@ -1286,7 +1286,7 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
     <tr>
       <td class="label">自动生成</td>
       <td colspan="4">
-        <button type="button" class="small-btn" onclick="fillCompetitors()">自动生成Amazon搜索链接</button>
+        <button type="button" class="small-btn" onclick="autoFillCompetitors()">自动生成Amazon搜索链接</button>
       </td>
     </tr>
   </table>
@@ -1299,6 +1299,24 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
 
 <script>
 window.addEventListener("DOMContentLoaded", () => {
+async function autoFillCompetitors() {
+  const name = document.getElementById("productName").value.trim();
+  if (!name) return alert("先输入产品名称");
+
+  const res = await fetch("/api/competitors", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({ name })
+  });
+
+  const data = await res.json();
+
+  for (let i = 0; i < data.length; i++) {
+    document.getElementById(`competitor${i+1}Name`).value = data[i].cn;
+    document.getElementById(`competitor${i+1}Link`).value = data[i].link;
+    document.getElementById(`competitor${i+1}Price`).value = data[i].price;
+  }
+}
 
 const codeInput = document.getElementById("productCode");
 if (codeInput && (!codeInput.value || codeInput.value === "自动生成")) {
@@ -1307,7 +1325,7 @@ if (codeInput && (!codeInput.value || codeInput.value === "自动生成")) {
   const m = String(now.getMonth() + 1).padStart(2, "0");
   const d = String(now.getDate()).padStart(2, "0");
   const rand = Math.floor(Math.random() * 900 + 100);
-  codeInput.value = `${y}${m}${d}${rand}`;
+  codeInput.value = "" + y + m + d + rand;
 }
   if (!$("expressUnitPrice").value) {
     $("expressUnitPrice").value = localStorage.getItem("expressUnitPrice") || "";
@@ -2486,6 +2504,31 @@ app.get("/users", checkLogin, checkAdmin, (_req, res) => {
       `);
     }
   );
+});
+
+app.use(express.json());
+
+app.post("/api/competitors", async (req, res) => {
+  const name = req.body.name;
+
+  try {
+    // 1️⃣ 中文 → 英文（简单版）
+    const en = name;
+
+    // 2️⃣ 构造 Amazon 搜索
+    const link = `https://www.amazon.com/s?k=${encodeURIComponent(en)}`;
+
+    // 3️⃣ 假数据（先跑通流程）
+    const result = [
+      { cn: name + " 竞品A", link, price: "15.99" },
+      { cn: name + " 竞品B", link, price: "18.99" },
+      { cn: name + " 竞品C", link, price: "22.99" }
+    ];
+
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: "失败" });
+  }
 });
 
 cron.schedule("0 18 * * 6", () => {

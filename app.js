@@ -1076,6 +1076,25 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
             <td class="money-tag">KG</td>
             <td colspan="4"></td>
           </tr>
+
+  <tr>
+  <td class="label">尺寸分段*</td>
+  <td>
+    <select class="input calc" name="sizeTier" id="sizeTier">
+      <option value="">请选择</option>
+      <option value="small_standard" ${row.sizeTier === "small_standard" ? "selected" : ""}>小号标准尺寸</option>
+      <option value="large_standard" ${row.sizeTier === "large_standard" ? "selected" : ""}>大号标准尺寸</option>
+      <option value="large_bulky" ${row.sizeTier === "large_bulky" ? "selected" : ""}>大号大件</option>
+      <option value="oversize_0_50" ${row.sizeTier === "oversize_0_50" ? "selected" : ""}>超大件 0-50磅</option>
+      <option value="oversize_50_70" ${row.sizeTier === "oversize_50_70" ? "selected" : ""}>超大件 50-70磅</option>
+      <option value="oversize_70_150" ${row.sizeTier === "oversize_70_150" ? "selected" : ""}>超大件 70-150磅</option>
+      <option value="oversize_150_plus" ${row.sizeTier === "oversize_150_plus" ? "selected" : ""}>超大件 150磅以上</option>
+    </select>
+  </td>
+  <td class="money-tag">FBA用</td>
+  <td colspan="4"></td>
+</tr>
+          
         </table>
       </div>
 
@@ -1218,6 +1237,61 @@ function setVal(id, val){
   el.value = (val || 0).toFixed(3);
 }
 
+function getPriceTier(sellingPriceUsd) {
+  if (sellingPriceUsd < 10) return "lt10";
+  if (sellingPriceUsd <= 50) return "10to50";
+  return "gt50";
+}
+
+function calcFbaFeeUsd(sizeTier, actualWeightKg, lengthCm, widthCm, heightCm, sellingPriceUsd) {
+  const priceTier = getPriceTier(sellingPriceUsd);
+
+  const lengthIn = lengthCm / 2.54;
+  const widthIn = widthCm / 2.54;
+  const heightIn = heightCm / 2.54;
+
+  const actualWeightLb = actualWeightKg * 2.20462;
+  const volumeWeightLb139 = (lengthIn * widthIn * heightIn) / 139;
+
+  const chargeWeightLb =
+    sizeTier === "small_standard" || sizeTier === "oversize_150_plus"
+      ? actualWeightLb
+      : Math.max(actualWeightLb, volumeWeightLb139);
+
+  const oz = chargeWeightLb * 16;
+
+  if (sizeTier === "small_standard") {
+    if (oz <= 2) return priceTier === "lt10" ? 2.43 : priceTier === "10to50" ? 3.32 : 3.58;
+    if (oz <= 4) return priceTier === "lt10" ? 2.49 : priceTier === "10to50" ? 3.42 : 3.68;
+    if (oz <= 6) return priceTier === "lt10" ? 2.56 : priceTier === "10to50" ? 3.54 : 3.80;
+    if (oz <= 8) return priceTier === "lt10" ? 2.77 : priceTier === "10to50" ? 3.68 : 3.94;
+    if (oz <= 10) return priceTier === "lt10" ? 2.82 : priceTier === "10to50" ? 3.78 : 4.04;
+    if (oz <= 12) return priceTier === "lt10" ? 2.92 : priceTier === "10to50" ? 3.91 : 4.17;
+    return priceTier === "lt10" ? 2.95 : priceTier === "10to50" ? 3.96 : 4.22;
+  }
+
+  if (sizeTier === "large_standard") {
+    if (chargeWeightLb <= 0.25) return priceTier === "lt10" ? 2.91 : priceTier === "10to50" ? 3.73 : 3.99;
+    if (chargeWeightLb <= 0.5) return priceTier === "lt10" ? 3.13 : priceTier === "10to50" ? 3.95 : 4.21;
+    if (chargeWeightLb <= 0.75) return priceTier === "lt10" ? 3.38 : priceTier === "10to50" ? 4.20 : 4.46;
+    if (chargeWeightLb <= 1) return priceTier === "lt10" ? 3.78 : priceTier === "10to50" ? 4.60 : 4.86;
+    if (chargeWeightLb <= 1.25) return priceTier === "lt10" ? 4.22 : priceTier === "10to50" ? 5.04 : 5.30;
+    if (chargeWeightLb <= 1.5) return priceTier === "lt10" ? 4.60 : priceTier === "10to50" ? 5.42 : 5.68;
+    if (chargeWeightLb <= 1.75) return priceTier === "lt10" ? 4.75 : priceTier === "10to50" ? 5.57 : 5.83;
+    if (chargeWeightLb <= 2) return priceTier === "lt10" ? 5.00 : priceTier === "10to50" ? 5.82 : 6.08;
+    if (chargeWeightLb <= 2.25) return priceTier === "lt10" ? 5.10 : priceTier === "10to50" ? 5.92 : 6.18;
+    if (chargeWeightLb <= 2.5) return priceTier === "lt10" ? 5.28 : priceTier === "10to50" ? 6.10 : 6.36;
+    if (chargeWeightLb <= 2.75) return priceTier === "lt10" ? 5.44 : priceTier === "10to50" ? 6.26 : 6.52;
+    if (chargeWeightLb <= 3) return priceTier === "lt10" ? 5.85 : priceTier === "10to50" ? 6.67 : 6.93;
+
+    const base = priceTier === "lt10" ? 6.15 : priceTier === "10to50" ? 6.97 : 7.23;
+    const extraLb = chargeWeightLb - 3;
+    return base + Math.ceil(extraLb / 0.25) * 0.08;
+  }
+
+  return 0;
+}
+
 function calcAll(){
 
   const exchangeRate = num("exchangeRate");
@@ -1229,6 +1303,45 @@ function calcAll(){
   const length = num("lengthCm");
   const width = num("widthCm");
   const height = num("heightCm");
+  const actualWeight = num("actualWeight");
+  const sizeTier = $("sizeTier") ? $("sizeTier").value : "";
+
+  // ===== 佣金(RMB) =====
+const commissionRmb = sellingPriceUsd * (commissionRate / 100) * exchangeRate;
+setVal("commissionRmb", commissionRmb);
+
+// ===== 广告费(RMB) =====
+const adCostRmb = sellingPriceUsd * (adRate / 100) * exchangeRate;
+setVal("adCostRmb", adCostRmb);
+
+// ===== FBA费用(RMB) =====
+const fbaFeeUsd = calcFbaFeeUsd(sizeTier, actualWeight, length, width, height, sellingPriceUsd);
+const fbaFeeRmb = fbaFeeUsd * exchangeRate;
+setVal("fbaFeeRmb", fbaFeeRmb);
+
+// ===== 仓租(USD) =====
+// 立方英尺 = (英寸体积) / 1728
+const lengthIn = length / 2.54;
+const widthIn = width / 2.54;
+const heightIn = height / 2.54;
+const cubicFeet = (lengthIn * widthIn * heightIn) / 1728;
+
+// 现在先按你给的淡季单价 0.78
+const warehouseUsd = cubicFeet * 0.78;
+setVal("warehouseUsd", warehouseUsd);
+
+// ===== 配送+分拨(USD) =====
+// 你说现在默认不用，先自动填 0
+setVal("deliveryUsd", 0);
+
+// ===== 退货成本(RMB) =====
+// 佣金 * 20%，最高 5 美元封顶
+let returnCostRmb = commissionRmb * 0.2;
+const maxReturnCostRmb = 5 * exchangeRate;
+if (returnCostRmb > maxReturnCostRmb) {
+  returnCostRmb = maxReturnCostRmb;
+}
+setVal("returnCostRmb", returnCostRmb);
 
   // ===== 销售价 RMB =====
   const sellingRmb = sellingPriceUsd * exchangeRate;

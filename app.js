@@ -2435,7 +2435,7 @@ app.get("/users", checkLogin, checkAdmin, (_req, res) => {
         &nbsp;&nbsp;
         <a href="/approve-user/${row.id}?status=approved">✅ 通过</a>
         &nbsp;&nbsp;
-        <a href="/approve-user/${row.id}?status=rejected">❌ 不通过</a>
+        <a href="/reject-user/${row.id}">❌ 不通过</a>
         &nbsp;&nbsp;
         <a href="/delete-user/${row.id}" onclick="return confirm('确定删除该用户吗？')">删除</a>
       `

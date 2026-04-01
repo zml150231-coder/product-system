@@ -1287,7 +1287,7 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
     <tr>
       <td class="label">自动生成</td>
       <td colspan="4">
-        <button type="button" class="small-btn" onclick="autoFillCompetitors()">生成Amazon竞品链接</button>
+        <button type="button" class="small-btn" onclick="autoFillCompetitors()">自动生成Amazon竞品链接</button>
       </td>
     </tr>
   </table>
@@ -1409,6 +1409,120 @@ document.querySelectorAll(".calc").forEach(el => {
 
 
 <script>
+function $(id) {
+  return document.getElementById(id);
+}
+
+function num(id) {
+  const el = document.getElementById(id);
+  if (!el) return 0;
+  const v = parseFloat(el.value);
+  return isNaN(v) ? 0 : v;
+}
+
+function setVal(id, val, digits = 3) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (val === "" || val === null || val === undefined || isNaN(val)) {
+    el.value = "";
+  } else {
+    el.value = Number(val).toFixed(digits);
+  }
+}
+
+function calcAll() {
+  const exchangeRate = num("exchangeRate");
+  const purchaseCost = num("purchaseCost");
+  const commissionRate = num("commissionRate");
+  const fenxiaoPrice = num("fenxiaoPrice");
+  const adRate = num("adRate");
+  const sellingPriceUsd = num("sellingPriceUsd");
+
+  const lengthCm = num("lengthCm");
+  const widthCm = num("widthCm");
+  const heightCm = num("heightCm");
+  const actualWeight = num("actualWeight");
+
+  const expressUnitPrice = num("expressUnitPrice");
+  const airUnitPrice = num("airUnitPrice");
+  const seaUnitPrice = num("seaUnitPrice");
+
+  const expressTax = num("expressTax") || 1;
+  const airTax = num("airTax") || 1;
+  const seaTax = num("seaTax") || 1;
+
+  const warehouseUsd = num("warehouseUsd");
+  const deliveryUsd = num("deliveryUsd");
+  const returnCostRmb = num("returnCostRmb");
+
+  const volumeWeight1 = lengthCm * widthCm * heightCm / 6000;
+  const volumeWeight2 = lengthCm * widthCm * heightCm / 5000;
+
+  setVal("volumeWeight6000", volumeWeight1);
+  setVal("volumeWeight5000", volumeWeight2);
+
+  const sellingPriceRmb = sellingPriceUsd * exchangeRate;
+  const profitCostDiff = fenxiaoPrice - purchaseCost;
+  const profitRate1 = purchaseCost ? (profitCostDiff / purchaseCost) * 100 : 0;
+  const profitSellDiff = sellingPriceRmb - fenxiaoPrice;
+  const profitRate2 = fenxiaoPrice ? (profitSellDiff / fenxiaoPrice) * 100 : 0;
+
+  setVal("sellingPriceRmb", sellingPriceRmb);
+  setVal("profitCostDiff", profitCostDiff);
+  setVal("profitRate1", profitRate1);
+  setVal("profitSellDiff", profitSellDiff);
+  setVal("profitRate2", profitRate2);
+
+  const expressWeightQty = Math.max(actualWeight, volumeWeight1);
+  const airWeightQty = Math.max(actualWeight, volumeWeight1);
+  const seaWeightQty = Math.max(actualWeight, volumeWeight2);
+
+  setVal("expressWeightQty", expressWeightQty);
+  setVal("airWeightQty", airWeightQty);
+  setVal("seaWeightQty", seaWeightQty);
+
+  const expressTotalPrice = expressWeightQty * expressUnitPrice * expressTax;
+  const airTotalPrice = airWeightQty * airUnitPrice * airTax;
+  const seaTotalPrice = seaWeightQty * seaUnitPrice * seaTax;
+
+  setVal("expressTotalPrice", expressTotalPrice);
+  setVal("airTotalPrice", airTotalPrice);
+  setVal("seaTotalPrice", seaTotalPrice);
+
+  const commissionRmb = sellingPriceUsd * (commissionRate / 100) * exchangeRate;
+  const adCostRmb = sellingPriceUsd * (adRate / 100) * exchangeRate;
+
+  setVal("commissionRmb", commissionRmb);
+  setVal("adCostRmb", adCostRmb);
+
+  const fbaFeeRmb = (warehouseUsd + deliveryUsd) * exchangeRate;
+  setVal("fbaFeeRmb", fbaFeeRmb);
+
+  const expressFee = expressTotalPrice + fbaFeeRmb + commissionRmb + returnCostRmb + adCostRmb;
+  const airFee = airTotalPrice + fbaFeeRmb + commissionRmb + returnCostRmb + adCostRmb;
+  const seaFee = seaTotalPrice + fbaFeeRmb + commissionRmb + returnCostRmb + adCostRmb;
+
+  setVal("expressFee", expressFee);
+  setVal("airFee", airFee);
+  setVal("seaFee", seaFee);
+
+  const expressProfit = sellingPriceRmb - purchaseCost - expressFee;
+  const airProfit = sellingPriceRmb - purchaseCost - airFee;
+  const seaProfit = sellingPriceRmb - purchaseCost - seaFee;
+
+  setVal("expressProfit", expressProfit);
+  setVal("airProfit", airProfit);
+  setVal("seaProfit", seaProfit);
+
+  const expressProfitRate = sellingPriceRmb ? (expressProfit / sellingPriceRmb) * 100 : 0;
+  const airProfitRate = sellingPriceRmb ? (airProfit / sellingPriceRmb) * 100 : 0;
+  const seaProfitRate = sellingPriceRmb ? (seaProfit / sellingPriceRmb) * 100 : 0;
+
+  setVal("expressProfitRate", expressProfitRate);
+  setVal("airProfitRate", airProfitRate);
+  setVal("seaProfitRate", seaProfitRate);
+}
+
 function fetchRate() {
   fetch("https://open.er-api.com/v6/latest/USD")
     .then(res => res.json())
@@ -1418,13 +1532,128 @@ function fetchRate() {
         alert("汇率获取失败");
         return;
       }
-      document.getElementById("exchangeRate").value = (rate * 0.9).toFixed(4);
-      if (typeof calcAll === "function") calcAll();
+      $("exchangeRate").value = (rate * 0.9).toFixed(4);
+      calcAll();
     })
-    .catch(() => {
+    .catch(err => {
+      console.error("汇率接口失败：", err);
       alert("汇率获取失败");
     });
 }
+
+async function autoFillCompetitors() {
+  const name = document.getElementById("productName").value.trim();
+  if (!name) return alert("先输入产品名称");
+
+  const btn = document.querySelector('button[onclick="autoFillCompetitors()"]');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "生成中...";
+  }
+
+  try {
+    const res = await fetch("/api/competitors", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error || "竞品生成失败");
+    }
+
+    for (let i = 0; i < 3; i++) {
+      const item = data[i] || {};
+      document.getElementById("competitor" + (i + 1) + "Name").value = item.cn || "";
+      document.getElementById("competitor" + (i + 1) + "Link").value = item.link || "";
+      document.getElementById("competitor" + (i + 1) + "Image").value = item.image || "";
+      document.getElementById("competitor" + (i + 1) + "Price").value = item.price || "";
+    }
+  } catch (err) {
+    alert(err.message || "竞品生成失败");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "自动生成Amazon竞品链接";
+    }
+  }
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  const form = document.getElementById("productForm");
+  if (form) {
+    form.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && e.target.tagName !== "TEXTAREA") {
+        e.preventDefault();
+        e.target.blur();
+      }
+    });
+  }
+
+  const photoInput = document.getElementById("photoInput");
+  const photoBox = document.getElementById("photoPreviewBox");
+  if (photoInput && photoBox) {
+    photoInput.addEventListener("change", function () {
+      const file = this.files && this.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        photoBox.innerHTML = '<img src="' + e.target.result + '" style="max-width:100%;max-height:100%;object-fit:contain;">';
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  const codeInput = document.getElementById("productCode");
+  if (codeInput && (!codeInput.value || codeInput.value === "自动生成")) {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    const rand = Math.floor(Math.random() * 900 + 100);
+    codeInput.value = "" + y + m + d + rand;
+  }
+
+  if ($("expressUnitPrice") && !$("expressUnitPrice").value) {
+    $("expressUnitPrice").value = localStorage.getItem("expressUnitPrice") || "";
+  }
+  if ($("airUnitPrice") && !$("airUnitPrice").value) {
+    $("airUnitPrice").value = localStorage.getItem("airUnitPrice") || "";
+  }
+  if ($("seaUnitPrice") && !$("seaUnitPrice").value) {
+    $("seaUnitPrice").value = localStorage.getItem("seaUnitPrice") || "";
+  }
+
+  if ($("expressTax") && !$("expressTax").value) $("expressTax").value = "1";
+  if ($("airTax") && !$("airTax").value) $("airTax").value = "1";
+  if ($("seaTax") && !$("seaTax").value) $("seaTax").value = "1";
+
+  document.querySelectorAll(".calc").forEach(el => {
+    el.addEventListener("input", calcAll);
+    el.addEventListener("change", calcAll);
+  });
+
+  [
+    "lengthCm","widthCm","heightCm","actualWeight",
+    "expressUnitPrice","airUnitPrice","seaUnitPrice",
+    "expressTax","airTax","seaTax",
+    "warehouseUsd","deliveryUsd","returnCostRmb"
+  ].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener("input", calcAll);
+      el.addEventListener("change", calcAll);
+    }
+  });
+
+  calcAll();
+
+  if ($("exchangeRate") && !$("exchangeRate").value) {
+    fetchRate();
+  }
+});
 </script>
 
 <script>
@@ -2736,6 +2965,43 @@ app.post("/api/competitors", async (req, res) => {
         api_key: serpKey
       }
     });
+
+    const organic = Array.isArray(serpResp.data.organic_results)
+      ? serpResp.data.organic_results
+      : [];
+
+    const top3 = organic.slice(0, 3).map((item, idx) => {
+      const title = item.title || (rawName + " 竞品" + (idx + 1));
+      const link = item.link || "";
+      const image = item.thumbnail || item.image || "";
+      const price =
+        item.price && typeof item.price === "object"
+          ? (item.price.value || item.price.raw || "")
+          : (item.price || "");
+
+      return {
+        cn: title,
+        link,
+        image,
+        price: String(price || "")
+      };
+    });
+
+    while (top3.length < 3) {
+      top3.push({
+        cn: rawName + " 竞品" + (top3.length + 1),
+        link: "",
+        image: "",
+        price: ""
+      });
+    }
+
+    res.json(top3);
+  } catch (e) {
+    console.error("竞品生成失败：", e.response?.data || e.message);
+    res.status(500).json({ error: "竞品生成失败" });
+  }
+});
 
     const organic = Array.isArray(serpResp.data.organic_results)
       ? serpResp.data.organic_results

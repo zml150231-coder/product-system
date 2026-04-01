@@ -8,6 +8,7 @@ const multer = require("multer");
 const PDFDocument = require("pdfkit");
 const XLSX = require("xlsx");
 const cron = require("node-cron");
+const axios = require("axios");
 const app = express();
 const ROOT = __dirname;
 const UPLOAD_DIR = path.join(ROOT, "uploads");
@@ -1286,7 +1287,7 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
     <tr>
       <td class="label">自动生成</td>
       <td colspan="4">
-        <button type="button" class="small-btn" onclick="fillCompetitors()">生成Amazon竞品链接</button>
+        <button type="button" class="small-btn" onclick="autoFillCompetitors()">生成Amazon竞品链接</button>
       </td>
     </tr>
   </table>
@@ -1306,18 +1307,39 @@ async function autoFillCompetitors() {
   const name = document.getElementById("productName").value.trim();
   if (!name) return alert("先输入产品名称");
 
-  const res = await fetch("/api/competitors", {
-    method: "POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({ name })
-  });
+  const btn = document.querySelector('button[onclick="autoFillCompetitors()"]');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "生成中...";
+  }
 
-  const data = await res.json();
+  try {
+    const res = await fetch("/api/competitors", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name })
+    });
 
-  for (let i = 0; i < data.length; i++) {
-    document.getElementById("competitor" + (i + 1) + "Name").value = data[i].cn || "";
-    document.getElementById("competitor" + (i + 1) + "Link").value = data[i].link || "";
-    document.getElementById("competitor" + (i + 1) + "Price").value = data[i].price || "";
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error || "竞品生成失败");
+    }
+
+    for (let i = 0; i < 3; i++) {
+      const item = data[i] || {};
+      document.getElementById("competitor" + (i + 1) + "Name").value = item.cn || "";
+      document.getElementById("competitor" + (i + 1) + "Link").value = item.link || "";
+      document.getElementById("competitor" + (i + 1) + "Image").value = item.image || "";
+      document.getElementById("competitor" + (i + 1) + "Price").value = item.price || "";
+    }
+  } catch (err) {
+    alert(err.message || "竞品生成失败");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "自动生成Amazon竞品链接";
+    }
   }
 }
 
@@ -1385,20 +1407,6 @@ document.querySelectorAll(".calc").forEach(el => {
 
 </script>
 
-<script>
-function fillCompetitors() {
-  const name = document.getElementById("productName").value.trim();
-  if (!name) return alert("先输入产品名称");
-
-  const url = "https://www.amazon.com/s?k=" + encodeURIComponent(name);
-
-  for (let i = 1; i <= 3; i++) {
-    document.getElementById("competitor" + i + "Name").value = name + " 竞品" + i;
-    document.getElementById("competitor" + i + "Link").value = url;
-    document.getElementById("competitor" + i + "Price").value = "";
-  }
-}
-</script>
 
 <script>
 function fetchRate() {
@@ -1420,7 +1428,7 @@ function fetchRate() {
 </script>
 
 <script>
-async function fillCompetitors() {
+async function autoFillCompetitors() {
   const name = document.getElementById("productName").value.trim();
   if (!name) return alert("先填产品名称");
 
@@ -2677,39 +2685,95 @@ app.get("/users", checkLogin, checkAdmin, (_req, res) => {
 
 app.use(express.json());
 
+async function translateToEnglish(text) {
+  const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
+  if (!apiKey) return text;
+
+  const url = "https://translation.googleapis.com/language/translate/v2";
+
+  const resp = await axios.post(
+    url,
+    null,
+    {
+      params: {
+        key: apiKey,
+        q: text,
+        target: "en",
+        format: "text"
+      }
+    }
+  );
+
+  const translated =
+    resp.data &&
+    resp.data.data &&
+    resp.data.data.translations &&
+    resp.data.data.translations[0] &&
+    resp.data.data.translations[0].translatedText;
+
+  return translated || text;
+}
+
 app.post("/api/competitors", async (req, res) => {
-  const name = String(req.body.name || "").trim();
-  if (!name) {
+  const rawName = String(req.body.name || "").trim();
+  if (!rawName) {
     return res.status(400).json({ error: "产品名称不能为空" });
   }
 
   try {
-    const keyword = encodeURIComponent(name);
+    const englishKeyword = await translateToEnglish(rawName);
 
-    const result = [
-      {
-        cn: name + " 竞品1",
-        link: "https://www.amazon.com/s?k=" + keyword + "&page=1",
-        image: "https://via.placeholder.com/120?text=Item+1",
-        price: "15.99"
-      },
-      {
-        cn: name + " 竞品2",
-        link: "https://www.amazon.com/s?k=" + keyword + "&page=1",
-        image: "https://via.placeholder.com/120?text=Item+2",
-        price: "18.99"
-      },
-      {
-        cn: name + " 竞品3",
-        link: "https://www.amazon.com/s?k=" + keyword + "&page=1",
-        image: "https://via.placeholder.com/120?text=Item+3",
-        price: "22.99"
+    const serpKey = process.env.SERPAPI_KEY;
+    if (!serpKey) {
+      return res.status(500).json({ error: "缺少 SERPAPI_KEY" });
+    }
+
+    const serpResp = await axios.get("https://serpapi.com/search.json", {
+      params: {
+        engine: "amazon",
+        amazon_domain: "amazon.com",
+        search_term: englishKeyword,
+        api_key: serpKey
       }
-    ];
+    });
 
-    res.json(result);
+    const organic = Array.isArray(serpResp.data.organic_results)
+      ? serpResp.data.organic_results
+      : [];
+
+    const top3 = organic.slice(0, 3).map((item, idx) => {
+      const title = item.title || (rawName + " 竞品" + (idx + 1));
+      const link = item.link || "";
+      const image =
+        item.thumbnail ||
+        item.image ||
+        "";
+      const price =
+        item.price && typeof item.price === "object"
+          ? (item.price.value || item.price.raw || "")
+          : (item.price || "");
+
+      return {
+        cn: title,
+        link,
+        image,
+        price: String(price || "")
+      };
+    });
+
+    while (top3.length < 3) {
+      top3.push({
+        cn: rawName + " 竞品" + (top3.length + 1),
+        link: "",
+        image: "",
+        price: ""
+      });
+    }
+
+    res.json(top3);
   } catch (e) {
-    res.status(500).json({ error: "失败" });
+    console.error("竞品生成失败：", e.response?.data || e.message);
+    res.status(500).json({ error: "竞品生成失败" });
   }
 });
 

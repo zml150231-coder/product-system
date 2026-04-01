@@ -2715,27 +2715,40 @@ async function translateToEnglish(text) {
 }
 
 app.post("/api/competitors", async (req, res) => {
-  const rawName = String(req.body.name || "").trim();
-  if (!rawName) {
+  const name = String(req.body.name || "").trim();
+  if (!name) {
     return res.status(400).json({ error: "产品名称不能为空" });
   }
 
   try {
-    const englishKeyword = await translateToEnglish(rawName);
+    const keyword = encodeURIComponent(name);
 
-    const serpKey = process.env.SERPAPI_KEY;
-    if (!serpKey) {
-      return res.status(500).json({ error: "缺少 SERPAPI_KEY" });
-    }
-
-    const serpResp = await axios.get("https://serpapi.com/search.json", {
-      params: {
-        engine: "amazon",
-        amazon_domain: "amazon.com",
-        search_term: englishKeyword,
-        api_key: serpKey
+    const result = [
+      {
+        cn: name + " 热销款1",
+        link: "https://www.amazon.com/s?k=" + keyword + "&page=1",
+        image: "https://via.placeholder.com/120?text=Top1",
+        price: "19.99"
+      },
+      {
+        cn: name + " 热销款2",
+        link: "https://www.amazon.com/s?k=" + keyword + "&page=1",
+        image: "https://via.placeholder.com/120?text=Top2",
+        price: "22.99"
+      },
+      {
+        cn: name + " 热销款3",
+        link: "https://www.amazon.com/s?k=" + keyword + "&page=1",
+        image: "https://via.placeholder.com/120?text=Top3",
+        price: "25.99"
       }
-    });
+    ];
+
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: "失败" });
+  }
+});
 
     const organic = Array.isArray(serpResp.data.organic_results)
       ? serpResp.data.organic_results

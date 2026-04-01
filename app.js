@@ -850,13 +850,16 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
       padding-top: 6px;
     }
     .readonly-red {
-      border: 1px solid #c95d5d;
-      background: #f3f3f3;
-    }
-    .readonly-gray {
-      background: #b9b9b9;
-      color: #111;
-    }
+  border: 1px solid #ff3b30;
+  background: #111111;
+  color: #ffffff;
+}
+
+.readonly-gray {
+  border: 1px solid #ff3b30;
+  background: #111111;
+  color: #ffffff;
+}
     .photo-box {
       height: 290px;
       background: #f5f5f5;

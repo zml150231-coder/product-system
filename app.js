@@ -1765,85 +1765,65 @@ app.get("/list", checkLogin, (req, res) => {
         </form>
 
         <table>
-         <tr>
-        <th>产品图片</th>
-        <th>表单名称</th>
-        <th>产品名称</th>
-        <th>产品编号</th>
-        <th>利润率</th>
-       <th>是否通过</th>
-       <th>采购成本</th>
-       <th>销售价USD</th>
-  ${user.is_admin ? "<th>创建人</th><th>最后编辑人</th>" : ""}
-      <th>最后更新时间</th>
-      <th>操作</th>
-</tr>
-          ${
-            rows.length > 0
-              ? rows.map(row => `
-                <tr>
-                 <td>
+  <tr>
+    <th>产品图片</th>
+    <th>表单名称</th>
+    <th>产品名称</th>
+    <th>产品编号</th>
+    <th>利润率</th>
+    <th>是否通过</th>
+    <th>采购成本</th>
+    <th>销售价USD</th>
+    ${user.is_admin ? "<th>创建人</th><th>最后编辑人</th>" : ""}
+    <th>最后更新时间</th>
+    <th>操作</th>
+  </tr>
   ${
-    row.photoPath
-      ? `<a href="/detail/${row.id}">
-           <img src="/uploads/${esc(row.photoPath)}" style="width:60px;height:60px;object-fit:cover;border-radius:4px;">
-         </a>`
-      : `<a href="/detail/${row.id}" style="color:#999;text-decoration:none;">无图片</a>`
+    rows.length > 0
+      ? rows.map(row => `
+        <tr>
+          <td>
+            ${
+              row.photoPath
+                ? `<a href="/detail/${row.id}">
+                     <img src="/uploads/${esc(row.photoPath)}" style="width:60px;height:60px;object-fit:cover;border-radius:4px;">
+                   </a>`
+                : `<a href="/detail/${row.id}" style="color:#999;text-decoration:none;">无图片</a>`
+            }
+          </td>
+          <td><a href="/detail/${row.id}">${esc(row.formName || "")}</a></td>
+          <td>${esc(row.productName || "")}</td>
+          <td>${esc(row.productCode || "")}</td>
+          <td>${esc(row.seaProfitRate || "")}%</td>
+          <td>
+            ${
+              row.approveStatus === "approved"
+                ? "✅ 通过"
+                : row.approveStatus === "rejected"
+                ? "❌ 不通过"
+                : "⏳ 待审核"
+            }
+          </td>
+          <td>${esc(row.purchaseCost || "")}</td>
+          <td>${esc(row.sellingPriceUsd || "")}</td>
+          ${user.is_admin ? `<td>${esc(row.ownerUsername || "")}</td><td>${esc(row.lastEditedByUsername || "")}</td>` : ""}
+          <td>${esc(formatTime(row.updatedAt))}</td>
+          <td>
+            <a href="/edit/${row.id}">编辑</a>
+            &nbsp;|&nbsp;
+            <a href="/delete/${row.id}" onclick="return confirm('确定删除吗？')">删除</a>
+            ${
+              user.is_admin
+                ? `&nbsp;|&nbsp;<a href="/approve-product/${row.id}">通过</a>
+                   &nbsp;|&nbsp;<a href="/reject-product/${row.id}">不通过</a>`
+                : ""
+            }
+          </td>
+        </tr>
+      `).join("")
+      : `<tr><td colspan="${user.is_admin ? 11 : 9}" style="text-align:center;">暂无记录</td></tr>`
   }
-</td>
-                  <td><a href="/detail/${row.id}">${esc(row.formName)}</a></td>
-                  <td>${esc(row.productName)}</td>
-                 <td>${esc(row.productCode || "")}</td>
-<td>${esc(row.seaProfitRate || "")}%</td>
-<td>
-  ${
-    row.approveStatus === "approved"
-      ? "✅ 通过"
-      : row.approveStatus === "rejected"
-      ? "❌ 不通过"
-      : "⏳ 待审核"
-  }
-</td>
-<td>
-  ${
-    row.approveStatus === "approved"
-      ? "✅ 通过"
-      : row.approveStatus === "rejected"
-      ? "❌ 不通过"
-      : "⏳ 待审核"
-  }
-</td>>
-
-<td>
-  ${
-    row.approveStatus === "approved"
-      ? "✅ 通过"
-      : row.approveStatus === "rejected"
-      ? "❌ 不通过"
-      : "⏳ 待审核"
-  }
-</td>
-                  <td>${esc(row.purchaseCost)}</td>
-                  <td>${esc(row.sellingPriceUsd)}</td>
-                  ${user.is_admin ? `<td>${esc(row.ownerUsername)}</td><td>${esc(row.lastEditedByUsername)}</td>` : ""}
-                  <td>${esc(formatTime(row.updatedAt))}</td>
-                 <td>
-  <a href="/edit/${row.id}">编辑</a>
-  &nbsp;|&nbsp;
-  <a href="/delete/${row.id}" onclick="return confirm('确定删除吗？')">删除</a>
-
-  ${
-    user.is_admin
-      ? `&nbsp;|&nbsp;<a href="/approve-product/${row.id}">通过</a>
-         &nbsp;|&nbsp;<a href="/reject-product/${row.id}">不通过</a>
-      : ""
-  }
-</td>
-                </tr>
-              `).join("")
-              : `<tr><td colspan="${user.is_admin ? 9 : 7}" style="text-align:center;">暂无记录</td></tr>`
-          }
-        </table>
+</table>
 
         <script>
           function toggleDateRange() {

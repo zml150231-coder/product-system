@@ -1523,6 +1523,121 @@ function calcAll() {
   setVal("seaProfitRate", seaProfitRate);
 }
 
+<script>
+function $(id) {
+  return document.getElementById(id);
+}
+
+function num(id) {
+  const el = document.getElementById(id);
+  if (!el) return 0;
+  const v = parseFloat(el.value);
+  return isNaN(v) ? 0 : v;
+}
+
+function setVal(id, val, digits = 3) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (val === "" || val === null || val === undefined || isNaN(val)) {
+    el.value = "";
+  } else {
+    el.value = Number(val).toFixed(digits);
+  }
+}
+
+function calcAll() {
+  const exchangeRate = num("exchangeRate");
+  const purchaseCost = num("purchaseCost");
+  const commissionRate = num("commissionRate");
+  const fenxiaoPrice = num("fenxiaoPrice");
+  const adRate = num("adRate");
+  const sellingPriceUsd = num("sellingPriceUsd");
+
+  const lengthCm = num("lengthCm");
+  const widthCm = num("widthCm");
+  const heightCm = num("heightCm");
+  const actualWeight = num("actualWeight");
+
+  const expressUnitPrice = num("expressUnitPrice");
+  const airUnitPrice = num("airUnitPrice");
+  const seaUnitPrice = num("seaUnitPrice");
+
+  const expressTax = num("expressTax") || 1;
+  const airTax = num("airTax") || 1;
+  const seaTax = num("seaTax") || 1;
+
+  const warehouseUsd = num("warehouseUsd");
+  const deliveryUsd = num("deliveryUsd");
+  const returnCostRmb = num("returnCostRmb");
+
+  const volumeWeight1 = lengthCm * widthCm * heightCm / 6000;
+  const volumeWeight2 = lengthCm * widthCm * heightCm / 5000;
+
+  setVal("volumeWeight6000", volumeWeight1);
+  setVal("volumeWeight5000", volumeWeight2);
+
+  const sellingPriceRmb = sellingPriceUsd * exchangeRate;
+  const profitCostDiff = fenxiaoPrice - purchaseCost;
+  const profitRate1 = purchaseCost ? (profitCostDiff / purchaseCost) * 100 : 0;
+  const profitSellDiff = sellingPriceRmb - fenxiaoPrice;
+  const profitRate2 = fenxiaoPrice ? (profitSellDiff / fenxiaoPrice) * 100 : 0;
+
+  setVal("sellingPriceRmb", sellingPriceRmb);
+  setVal("profitCostDiff", profitCostDiff);
+  setVal("profitRate1", profitRate1);
+  setVal("profitSellDiff", profitSellDiff);
+  setVal("profitRate2", profitRate2);
+
+  const expressWeightQty = Math.max(actualWeight, volumeWeight1);
+  const airWeightQty = Math.max(actualWeight, volumeWeight1);
+  const seaWeightQty = Math.max(actualWeight, volumeWeight2);
+
+  setVal("expressWeightQty", expressWeightQty);
+  setVal("airWeightQty", airWeightQty);
+  setVal("seaWeightQty", seaWeightQty);
+
+  const expressTotalPrice = expressWeightQty * expressUnitPrice * expressTax;
+  const airTotalPrice = airWeightQty * airUnitPrice * airTax;
+  const seaTotalPrice = seaWeightQty * seaUnitPrice * seaTax;
+
+  setVal("expressTotalPrice", expressTotalPrice);
+  setVal("airTotalPrice", airTotalPrice);
+  setVal("seaTotalPrice", seaTotalPrice);
+
+  const commissionRmb = sellingPriceUsd * (commissionRate / 100) * exchangeRate;
+  const adCostRmb = sellingPriceUsd * (adRate / 100) * exchangeRate;
+
+  setVal("commissionRmb", commissionRmb);
+  setVal("adCostRmb", adCostRmb);
+
+  const fbaFeeRmb = (warehouseUsd + deliveryUsd) * exchangeRate;
+  setVal("fbaFeeRmb", fbaFeeRmb);
+
+  const expressFee = expressTotalPrice + fbaFeeRmb + commissionRmb + returnCostRmb + adCostRmb;
+  const airFee = airTotalPrice + fbaFeeRmb + commissionRmb + returnCostRmb + adCostRmb;
+  const seaFee = seaTotalPrice + fbaFeeRmb + commissionRmb + returnCostRmb + adCostRmb;
+
+  setVal("expressFee", expressFee);
+  setVal("airFee", airFee);
+  setVal("seaFee", seaFee);
+
+  const expressProfit = sellingPriceRmb - purchaseCost - expressFee;
+  const airProfit = sellingPriceRmb - purchaseCost - airFee;
+  const seaProfit = sellingPriceRmb - purchaseCost - seaFee;
+
+  setVal("expressProfit", expressProfit);
+  setVal("airProfit", airProfit);
+  setVal("seaProfit", seaProfit);
+
+  const expressProfitRate = sellingPriceRmb ? (expressProfit / sellingPriceRmb) * 100 : 0;
+  const airProfitRate = sellingPriceRmb ? (airProfit / sellingPriceRmb) * 100 : 0;
+  const seaProfitRate = sellingPriceRmb ? (seaProfit / sellingPriceRmb) * 100 : 0;
+
+  setVal("expressProfitRate", expressProfitRate);
+  setVal("airProfitRate", airProfitRate);
+  setVal("seaProfitRate", seaProfitRate);
+}
+
 function fetchRate() {
   fetch("https://open.er-api.com/v6/latest/USD")
     .then(res => res.json())
@@ -1654,33 +1769,6 @@ window.addEventListener("DOMContentLoaded", () => {
     fetchRate();
   }
 });
-</script>
-
-<script>
-async function autoFillCompetitors() {
-  const name = document.getElementById("productName").value.trim();
-  if (!name) return alert("先填产品名称");
-
-  const res = await fetch("/api/competitors", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name })
-  });
-
-  const data = await res.json();
-  if (!Array.isArray(data)) {
-    alert("竞品生成失败");
-    return;
-  }
-
-  for (let i = 0; i < 3; i++) {
-    const item = data[i] || {};
-    document.getElementById("competitor" + (i + 1) + "Name").value = item.cn || "";
-    document.getElementById("competitor" + (i + 1) + "Link").value = item.link || "";
-    document.getElementById("competitor" + (i + 1) + "Image").value = item.image || "";
-    document.getElementById("competitor" + (i + 1) + "Price").value = item.price || "";
-  }
-}
 </script>
 </body>
 </html>

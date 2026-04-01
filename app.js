@@ -3091,43 +3091,6 @@ app.post("/api/competitors", async (req, res) => {
   }
 });
 
-    const organic = Array.isArray(serpResp.data.organic_results)
-      ? serpResp.data.organic_results
-      : [];
-
-    const top3 = organic.slice(0, 3).map((item, idx) => {
-      const title = item.title || (rawName + " 竞品" + (idx + 1));
-      const link = item.link || "";
-      const image = item.thumbnail || item.image || "";
-      const price =
-        item.price && typeof item.price === "object"
-          ? (item.price.value || item.price.raw || "")
-          : (item.price || "");
-
-      return {
-        cn: title,
-        link,
-        image,
-        price: String(price || "")
-      };
-    });
-
-    while (top3.length < 3) {
-      top3.push({
-        cn: rawName + " 竞品" + (top3.length + 1),
-        link: "",
-        image: "",
-        price: ""
-      });
-    }
-
-    res.json(top3);
-  } catch (e) {
-    console.error("竞品生成失败：", e.response?.data || e.message);
-    res.status(500).json({ error: "竞品生成失败" });
-  }
-});
-
 cron.schedule("0 18 * * 6", () => {
   console.log("开始生成周报...");
   generateWeeklySummaryPdf();

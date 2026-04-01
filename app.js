@@ -1286,7 +1286,7 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
     <tr>
       <td class="label">自动生成</td>
       <td colspan="4">
-        <button type="button" class="small-btn" onclick="autoFillCompetitors()">自动生成Amazon搜索链接</button>
+        <button type="button" class="small-btn" onclick="fillCompetitors()">生成Amazon竞品链接</button>
       </td>
     </tr>
   </table>
@@ -1356,6 +1356,21 @@ if ($("exchangeRate") && !$("exchangeRate").value) {
 }
 });
 
+</script>
+
+<script>
+function fillCompetitors() {
+  const name = document.getElementById("productName").value.trim();
+  if (!name) return alert("先输入产品名称");
+
+  const url = "https://www.amazon.com/s?k=" + encodeURIComponent(name);
+
+  for (let i = 1; i <= 3; i++) {
+    document.getElementById("competitor" + i + "Name").value = name + " 竞品" + i;
+    document.getElementById("competitor" + i + "Link").value = url;
+    document.getElementById("competitor" + i + "Price").value = "";
+  }
+}
 </script>
 
 <script>

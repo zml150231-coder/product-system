@@ -200,6 +200,41 @@ db.serialize(() => {
     )
   `);
 
+  db.run(`ALTER TABLE products ADD COLUMN approveStatus TEXT DEFAULT 'pending'`, ()=>{});
+db.run(`ALTER TABLE products ADD COLUMN approvedBy TEXT`, ()=>{});
+db.run(`ALTER TABLE products ADD COLUMN approvedAt TEXT`, ()=>{});
+db.run(`ALTER TABLE products ADD COLUMN rejectReason TEXT`, ()=>{});
+
+// 竞品信息先用 3 组最简单，别一开始搞太复杂
+db.run(`ALTER TABLE products ADD COLUMN competitor1Name TEXT`, ()=>{});
+db.run(`ALTER TABLE products ADD COLUMN competitor1Link TEXT`, ()=>{});
+db.run(`ALTER TABLE products ADD COLUMN competitor1Image TEXT`, ()=>{});
+db.run(`ALTER TABLE products ADD COLUMN competitor1Price TEXT`, ()=>{});
+
+db.run(`ALTER TABLE products ADD COLUMN competitor2Name TEXT`, ()=>{});
+db.run(`ALTER TABLE products ADD COLUMN competitor2Link TEXT`, ()=>{});
+db.run(`ALTER TABLE products ADD COLUMN competitor2Image TEXT`, ()=>{});
+db.run(`ALTER TABLE products ADD COLUMN competitor2Price TEXT`, ()=>{});
+
+db.run(`ALTER TABLE products ADD COLUMN competitor3Name TEXT`, ()=>{});
+db.run(`ALTER TABLE products ADD COLUMN competitor3Link TEXT`, ()=>{});
+db.run(`ALTER TABLE products ADD COLUMN competitor3Image TEXT`, ()=>{});
+db.run(`ALTER TABLE products ADD COLUMN competitor3Price TEXT`, ()=>{}`);
+
+// 为了按图片规则计算，必须补一个尺寸分段字段
+db.run(`ALTER TABLE products ADD COLUMN sizeTier TEXT`, ()=>{});
+
+db.run(`
+  CREATE TABLE IF NOT EXISTS weekly_reports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    weekStart TEXT,
+    weekEnd TEXT,
+    pdfPath TEXT,
+    createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+    createdBy TEXT
+  )
+`);
+
  db.get("SELECT * FROM users WHERE username = ?", ["gly123"], (err, row) => {
   if (err) {
     console.error(err);
@@ -301,6 +336,150 @@ app.get("/delete-user/:id", checkLogin, checkAdmin, (req, res) => {
           deletePhotoFile(row.photoPath);
         }
       });
+
+      app.get("/approve-product/:id", checkLogin, checkAdmin, (req, res) => {
+  const id = Number(req.params.id);
+  const status = req.query.status === "approved" ? "approved" : "rejected";
+
+  db.run(
+    `UPDATE products
+     SET approveStatus = ?, approvedBy = ?, approvedAt = datetime('now','localtime')
+     WHERE id = ?`,
+    [status, req.session.user.username, id],
+    (err) => {
+      if (err) return res.send("更新失败：" + err.message);
+      res.redirect("/list");
+    }
+  );
+});
+
+app.get("/approve-user/:id", checkLogin, checkAdmin, (req, res) => {
+  const id = Number(req.params.id);
+  const status = req.query.status === "approved" ? "approved" : "rejected";
+
+  db.run(
+    `UPDATE users
+     SET approval_status = ?, approved_by = ?, approved_at = datetime('now','localtime')
+     WHERE id = ?`,
+    [status, req.session.user.username, id],
+    (err) => {
+      if (err) return res.send("审核失败：" + err.message);
+      res.redirect("/users");
+    }
+  );
+});
+
+app.get("/user-products/:userId", checkLogin, checkAdmin, (req, res) => {
+  const userId = Number(req.params.userId);
+
+  if (!userId) {
+    return res.send("用户ID无效");
+  }
+
+  db.get("SELECT * FROM users WHERE id = ?", [userId], (err, userRow) => {
+    if (err) {
+      return res.send("查询用户失败：" + err.message);
+    }
+    if (!userRow) {
+      return res.send("用户不存在");
+    }
+
+    db.all(
+      `SELECT * FROM products
+       WHERE ownerUserId = ?
+       ORDER BY updatedAt DESC`,
+      [userId],
+      (err2, rows) => {
+        if (err2) {
+          return res.send("查询产品失败：" + err2.message);
+        }
+
+        res.send(`
+          <!DOCTYPE html>
+          <html lang="zh-CN">
+          <head>
+            <meta charset="UTF-8">
+            <title>${esc(userRow.username)} 的产品列表</title>
+            <style>
+              body{
+                font-family:Arial,"Microsoft YaHei",sans-serif;
+                background:#fff;
+                margin:20px;
+              }
+              table{
+                width:100%;
+                border-collapse:collapse;
+                margin-top:20px;
+              }
+              th,td{
+                border:1px solid #ccc;
+                padding:10px;
+                text-align:center;
+              }
+              th{
+                background:#f3f3f3;
+              }
+              a{
+                color:#2f6fed;
+                text-decoration:none;
+              }
+              .top{
+                margin-bottom:20px;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="top">
+              <h2>${esc(userRow.username)} 的产品列表</h2>
+              ${renderTopButtons(req.session.user)}
+            </div>
+
+            <table>
+              <tr>
+                <th>产品图片</th>
+                <th>表单名称</th>
+                <th>产品名称</th>
+                <th>产品编号</th>
+                <th>利润率</th>
+                <th>是否通过</th>
+                <th>最后更新时间</th>
+                <th>操作</th>
+              </tr>
+
+              ${rows.map(row => `
+                <tr>
+                  <td>
+                    ${
+                      row.photoPath
+                        ? `<img src="/uploads/${esc(row.photoPath)}" style="width:60px;height:60px;object-fit:cover;">`
+                        : "无图片"
+                    }
+                  </td>
+                  <td>${esc(row.formName || "")}</td>
+                  <td>${esc(row.productName || "")}</td>
+                  <td>${esc(row.productCode || "")}</td>
+                  <td>${esc(row.seaProfitRate || "")}%</td>
+                  <td>
+                    ${
+                      row.approveStatus === "approved"
+                        ? "✅ 通过"
+                        : row.approveStatus === "rejected"
+                        ? "❌ 不通过"
+                        : "⏳ 待审核"
+                    }
+                  </td>
+                  <td>${esc(formatTimeCN(row.updatedAt))}</td>
+                  <td><a href="/edit/${row.id}">查看/编辑</a></td>
+                </tr>
+              `).join("")}
+            </table>
+          </body>
+          </html>
+        `);
+      }
+    );
+  });
+});
 
       db.run("DELETE FROM products WHERE ownerUserId = ?", [userId], function (err3) {
         if (err3) {
@@ -1171,6 +1350,10 @@ app.post("/login", (req, res) => {
         return res.send(renderLoginPage("用户名或密码错误"));
       }
 
+      if (row.approval_status !== "approved") {
+  return res.send(renderLoginPage("该账户尚未通过管理员审核"));
+      }
+
       if (user.password_hash !== hashPassword(password)) {
         return res.send(renderLoginPage("用户名或密码错误"));
       }
@@ -1214,19 +1397,17 @@ app.post("/register", (req, res) => {
     return res.send(renderRegisterPage("用户名只能包含字母数字"));
   }
 
-  db.run(
-    `INSERT INTO users 
-    (username, password_hash, password_plain, is_admin, approval_status)
-    VALUES (?, ?, ?, 0, 'pending')`,
-    [username, hashPassword(password), password],
-    function (err) {
-      if (err) {
-        return res.send(renderRegisterPage("用户名已存在"));
-      }
-
-      res.send(renderLoginPage("注册成功，请等待管理员审核"));
+ db.run(
+  `INSERT INTO users (username, password_hash, password_plain, is_admin, approval_status)
+   VALUES (?, ?, ?, 0, 'pending')`,
+  [username, hashPassword(password), password],
+  function (err) {
+    if (err) {
+      return res.send(renderRegisterPage("注册失败，用户名可能已存在"));
     }
-  );
+    return res.send(renderLoginPage("注册申请已提交，请等待管理员审核通过后登录"));
+  }
+);
 });
 
 // 退出
@@ -1512,17 +1693,19 @@ app.get("/list", checkLogin, (req, res) => {
         </form>
 
         <table>
-          <tr>
-            <th>产品图片</th>
-            <th>表单名称</th>
-            <th>产品名称</th>
-            <th>产品编号</th>
-            <th>采购成本</th>
-            <th>销售价USD</th>
-            ${user.is_admin ? "<th>创建人</th><th>最后编辑人</th>" : ""}
-            <th>最后更新时间</th>
-            <th>操作</th>
-          </tr>
+         <tr>
+        <th>产品图片</th>
+        <th>表单名称</th>
+        <th>产品名称</th>
+        <th>产品编号</th>
+        <th>利润率</th>
+       <th>是否通过</th>
+       <th>采购成本</th>
+       <th>销售价USD</th>
+  ${user.is_admin ? "<th>创建人</th><th>最后编辑人</th>" : ""}
+      <th>最后更新时间</th>
+      <th>操作</th>
+</tr>
           ${
             rows.length > 0
               ? rows.map(row => `
@@ -1538,16 +1721,33 @@ app.get("/list", checkLogin, (req, res) => {
 </td>
                   <td><a href="/detail/${row.id}">${esc(row.formName)}</a></td>
                   <td>${esc(row.productName)}</td>
-                  <td>${esc(row.productCode)}</td>
+                 <td>${esc(row.seaProfitRate || "")}%</td>
+
+<td>
+  ${
+    row.approveStatus === "approved"
+      ? "✅ 通过"
+      : row.approveStatus === "rejected"
+      ? "❌ 不通过"
+      : "⏳ 待审核"
+  }
+</td>
                   <td>${esc(row.purchaseCost)}</td>
                   <td>${esc(row.sellingPriceUsd)}</td>
                   ${user.is_admin ? `<td>${esc(row.ownerUsername)}</td><td>${esc(row.lastEditedByUsername)}</td>` : ""}
                   <td>${esc(formatTime(row.updatedAt))}</td>
-                  <td>
-                    <a href="/edit/${row.id}">编辑</a>
-                    &nbsp;|&nbsp;
-                    <a href="/delete/${row.id}" onclick="return confirm('确定删除吗？')">删除</a>
-                  </td>
+                 <td>
+  <a href="/edit/${row.id}">编辑</a>
+  &nbsp;|&nbsp;
+  <a href="/delete/${row.id}" onclick="return confirm('确定删除吗？')">删除</a>
+
+  ${
+    user.is_admin
+      ? `&nbsp;|&nbsp;<a href="/approve-product/${row.id}?status=approved">通过</a>
+         &nbsp;|&nbsp;<a href="/approve-product/${row.id}?status=rejected">不通过</a>`
+      : ""
+  }
+</td>
                 </tr>
               `).join("")
               : `<tr><td colspan="${user.is_admin ? 9 : 7}" style="text-align:center;">暂无记录</td></tr>`
@@ -2159,7 +2359,7 @@ app.get("/users", checkLogin, checkAdmin, (_req, res) => {
               <th>用户名</th>
               <th>密码</th>
               <th>角色</th>
-              <th>注册时间</th>
+              <th>是否通过申请注册</th>
               <th>最后登录时间</th>
               <th>最后编辑时间</th>
               <th>操作</th>
@@ -2167,11 +2367,44 @@ app.get("/users", checkLogin, checkAdmin, (_req, res) => {
            ${rows.map(row => `
 <tr>
     <td>${row.id}</td>
-    <td>${esc(row.username)}</td>
+    <td>
+  ${
+    row.is_admin
+      ? esc(row.username)
+      : `<a href="/user-products/${row.id}" style="color:#2f6fed;font-weight:bold;text-decoration:none;">${esc(row.username)}</a>`
+  }
+</td>
     <td>${esc(row.password_plain)}</td>
     <td>${row.is_admin ? "管理员" : "普通用户"}</td>
     <td>${esc(row.approval_status || "pending")}</td>
-    <td>${esc(formatTimeCN(row.created_at))}</td>
+    <td>
+  ${
+    row.is_admin
+      ? ""
+      : row.approval_status === "pending"
+      ? `
+        ⏳ 待审核
+        &nbsp;&nbsp;
+        <a href="/approve-user/${row.id}?status=approved">✅ 通过</a>
+        &nbsp;&nbsp;
+        <a href="/approve-user/${row.id}?status=rejected">❌ 不通过</a>
+        &nbsp;&nbsp;
+        <a href="/delete-user/${row.id}" onclick="return confirm('确定删除该用户吗？')">删除</a>
+      `
+      : row.approval_status === "approved"
+      ? `✅ 已通过`
+      : `❌ 未通过`
+  }
+</td>
+<td>
+  ${
+    row.approval_status === "approved"
+      ? "✅ 通过"
+      : row.approval_status === "rejected"
+      ? "❌ 不通过"
+      : "⏳ 待审核"
+  }
+</td>
     <td>${esc(formatTimeCN(row.last_login_at))}</td>
     <td>${esc(formatTimeCN(row.last_edit_at))}</td>
     <td>
@@ -2180,9 +2413,9 @@ app.get("/users", checkLogin, checkAdmin, (_req, res) => {
           ? ""
           : row.approval_status === "pending"
             ? `
-              <a href="/approve-user/${row.id}">✅同意</a>
-              &nbsp;|&nbsp;
-              <a href="/reject-user/${row.id}">❌拒绝</a>
+             <a href="/approve-user/${row.id}?status=approved">✅ 通过</a>
+&nbsp;&nbsp;
+<a href="/approve-user/${row.id}?status=rejected">❌ 不通过</a>
               &nbsp;|&nbsp;
               <a href="/delete-user/${row.id}" onclick="return confirm('确定删除该用户吗？')">删除</a>
             `

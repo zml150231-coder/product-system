@@ -1530,7 +1530,6 @@ app.post("/save", checkLogin, upload.single("photo"), (req, res) => {
       d.warehouseUsd || "",
       d.deliveryUsd || "",
       d.adCostRmb || "",
-      changedFields=?,
       photoPath,
       u.id,
       u.username,
@@ -1941,7 +1940,7 @@ for(let k in d){
         expressWeightQty = ?, expressUnitPrice = ?, expressTax = ?, expressTotalPrice = ?,
         airWeightQty = ?, airUnitPrice = ?, airTax = ?, airTotalPrice = ?,
         seaWeightQty = ?, seaUnitPrice = ?, seaTax = ?, seaTotalPrice = ?,
-        fbaFeeRmb = ?, commissionRmb = ?, returnCostRmb = ?, warehouseUsd = ?, deliveryUsd = ?, adCostRmb = ?,
+        fbaFeeRmb = ?, commissionRmb = ?, returnCostRmb = ?, warehouseUsd = ?, deliveryUsd = ?, adCostRmb = ?, changedFields=?,
         photoPath = ?, lastEditedByUserId = ?, lastEditedByUsername = ?, updatedAt = datetime('now','localtime')
       WHERE id = ?
     `;

@@ -1228,20 +1228,21 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
             <col style="width: 220px;">
             <col style="width: 220px;">
           </colgroup>
-          <tr>
+                   <tr>
             <td class="label">FBA费用(RMB)</td>
-            <td><input class="input readonly-gray" type="number" step="0.001" name="fbaFeeRmb" id="fbaFeeRmb" value="${esc(row.fbaFeeRmb || "")}" /></td>
+            <td><input class="input readonly-gray" type="number" step="0.001" name="fbaFeeRmb" id="fbaFeeRmb" value="${esc(row.fbaFeeRmb || "")}" readonly /></td>
             <td class="label">佣金(RMB)</td>
-            <td><input class="input readonly-gray" type="number" step="0.001" name="commissionRmb" id="commissionRmb" value="${esc(row.commissionRmb || "")}" /></td>
+            <td><input class="input readonly-gray" type="number" step="0.001" name="commissionRmb" id="commissionRmb" value="${esc(row.commissionRmb || "")}" readonly /></td>
             <td class="label">退货成本(RMB)</td>
-            <td><input class="input readonly-gray" type="number" step="0.001" name="returnCostRmb" id="returnCostRmb" value="${esc(row.returnCostRmb || "")}" /></td>
+            <td><input class="input calc" type="number" step="0.001" name="returnCostRmb" id="returnCostRmb" value="${esc(row.returnCostRmb || "")}" /></td>
+          </tr>
           <tr>
             <td class="label">仓租(USD)</td>
-            <td><input class="input readonly-gray" type="number" step="0.001" name="warehouseUsd" id="warehouseUsd" value="${esc(row.warehouseUsd || "")}" /></td>
+            <td><input class="input calc" type="number" step="0.001" name="warehouseUsd" id="warehouseUsd" value="${esc(row.warehouseUsd || "")}" /></td>
             <td class="label">配送+分拨(USD)</td>
-            <td><input class="input readonly-gray" type="number" step="0.001" name="deliveryUsd" id="deliveryUsd" value="${esc(row.deliveryUsd || "")}" /></td>
+            <td><input class="input calc" type="number" step="0.001" name="deliveryUsd" id="deliveryUsd" value="${esc(row.deliveryUsd || "")}" /></td>
             <td class="label">广告费(RMB)</td>
-            <td><input class="input readonly-gray" type="number" step="0.001" name="adCostRmb" id="adCostRmb" value="${esc(row.adCostRmb || "")}" /></td>
+            <td><input class="input readonly-gray" type="number" step="0.001" name="adCostRmb" id="adCostRmb" value="${esc(row.adCostRmb || "")}" readonly /></td>
           </tr>
         </table>
       </div>
@@ -1303,18 +1304,19 @@ function $(id) {
 function num(id) {
   const el = $(id);
   if (!el) return 0;
-  const v = parseFloat(el.value);
-  return isNaN(v) ? 0 : v;
+  const v = parseFloat(String(el.value || "").trim());
+  return Number.isFinite(v) ? v : 0;
 }
 
 function setVal(id, val, digits = 3) {
   const el = $(id);
   if (!el) return;
-  if (val === "" || val === null || val === undefined || isNaN(val)) {
+  const n = Number(val);
+  if (val === "" || val === null || val === undefined || !Number.isFinite(n)) {
     el.value = "";
-  } else {
-    el.value = Number(val).toFixed(digits);
+    return;
   }
+  el.value = n.toFixed(digits);
 }
 
 function calcAll() {
@@ -1410,25 +1412,32 @@ function calcAll() {
 }
 
 function fetchRate() {
+  const rateInput = $("exchangeRate");
+  if (!rateInput) return;
+
   fetch("https://open.er-api.com/v6/latest/USD")
-    .then(res => res.json())
-    .then(data => {
+    .then(function (res) {
+      return res.json();
+    })
+    .then(function (data) {
       const rate = Number((data && data.rates && data.rates.CNY) || 0);
       if (!rate) {
         alert("汇率获取失败");
         return;
       }
-      $("exchangeRate").value = (rate * 0.9).toFixed(4);
+      rateInput.value = (rate * 0.9).toFixed(4);
       calcAll();
     })
-    .catch(err => {
+    .catch(function (err) {
       console.error("汇率接口失败：", err);
       alert("汇率获取失败");
     });
 }
 
 async function autoFillCompetitors() {
-  const name = $("productName") ? $("productName").value.trim() : "";
+  const productNameEl = $("productName");
+  const name = productNameEl ? productNameEl.value.trim() : "";
+
   if (!name) {
     alert("先输入产品名称");
     return;
@@ -1444,7 +1453,7 @@ async function autoFillCompetitors() {
     const res = await fetch("/api/competitors", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name })
+      body: JSON.stringify({ name: name })
     });
 
     const data = await res.json();
@@ -1471,7 +1480,100 @@ async function autoFillCompetitors() {
   }
 }
 
-window.addEventListener("DOMContentLoaded", () => {
+function bindCalc(id) {
+  const el = $(id);
+  if (!el) return;
+  el.addEventListener("input", calcAll);
+  el.addEventListener("change", calcAll);
+}
+
+function initPhotoPreview() {
+  const photoInput = $("photoInput");
+  const photoBox = $("photoPreviewBox");
+  if (!photoInput || !photoBox) return;
+
+  photoInput.addEventListener("change", function () {
+    const file = this.files && this.files[0];
+
+    if (!file) {
+      photoBox.innerHTML = '<div class="photo-inner">ⓘ<span>暂无照片</span></div>';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function (ev) {
+      photoBox.innerHTML = '<img src="' + ev.target.result + '" style="max-width:100%;max-height:100%;object-fit:contain;">';
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function initDeletePhoto() {
+  const deleteBtn = $("deletePhotoBtn");
+  if (!deleteBtn) return;
+
+  deleteBtn.addEventListener("click", function () {
+    const match = window.location.pathname.match(/^\/edit\/(\d+)$/);
+
+    if (match) {
+      if (confirm("确定删除这张照片吗？")) {
+        window.location.href = "/delete-photo/" + match[1];
+      }
+      return;
+    }
+
+    if ($("photoInput")) $("photoInput").value = "";
+    if ($("photoPreviewBox")) {
+      $("photoPreviewBox").innerHTML = '<div class="photo-inner">ⓘ<span>暂无照片</span></div>';
+    }
+  });
+}
+
+function initProductCode() {
+  const codeInput = $("productCode");
+  if (!codeInput) return;
+
+  if (!codeInput.value || codeInput.value === "自动生成") {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    const rand = Math.floor(Math.random() * 900 + 100);
+    codeInput.value = "" + y + m + d + rand;
+  }
+}
+
+function initPriceCache() {
+  try {
+    if ($("expressUnitPrice") && !$("expressUnitPrice").value) {
+      $("expressUnitPrice").value = localStorage.getItem("expressUnitPrice") || "";
+    }
+    if ($("airUnitPrice") && !$("airUnitPrice").value) {
+      $("airUnitPrice").value = localStorage.getItem("airUnitPrice") || "";
+    }
+    if ($("seaUnitPrice") && !$("seaUnitPrice").value) {
+      $("seaUnitPrice").value = localStorage.getItem("seaUnitPrice") || "";
+    }
+  } catch (e) {
+    console.error("读取本地缓存失败：", e);
+  }
+}
+
+function savePriceCache() {
+  try {
+    ["expressUnitPrice", "airUnitPrice", "seaUnitPrice"].forEach(function (id) {
+      const el = $(id);
+      if (!el) return;
+      el.addEventListener("change", function () {
+        localStorage.setItem(id, this.value || "");
+      });
+    });
+  } catch (e) {
+    console.error("保存本地缓存失败：", e);
+  }
+}
+
+window.addEventListener("DOMContentLoaded", function () {
   const form = $("productForm");
   if (form) {
     form.addEventListener("keydown", function (e) {
@@ -1482,86 +1584,38 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  const photoInput = $("photoInput");
-  const photoBox = $("photoPreviewBox");
-  if (photoInput && photoBox) {
-    photoInput.addEventListener("change", function () {
-      const file = this.files && this.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function (e) {
-        photoBox.innerHTML = '<img src="' + e.target.result + '" style="max-width:100%;max-height:100%;object-fit:contain;">';
-      };
-      reader.readAsDataURL(file);
-    });
-  }
-
-  const deleteBtn = $("deletePhotoBtn");
-  if (deleteBtn) {
-    deleteBtn.addEventListener("click", function () {
-      const match = window.location.pathname.match(/^\/edit\/(\d+)$/);
-      if (match) {
-        if (confirm("确定删除这张照片吗？")) {
-          window.location.href = "/delete-photo/" + match[1];
-        }
-      } else {
-        if ($("photoInput")) $("photoInput").value = "";
-        if ($("photoPreviewBox")) {
-          $("photoPreviewBox").innerHTML = '<div class="photo-inner">ⓘ<span>暂无照片</span></div>';
-        }
-      }
-    });
-  }
-
-  const codeInput = $("productCode");
-  if (codeInput && (!codeInput.value || codeInput.value === "自动生成")) {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, "0");
-    const d = String(now.getDate()).padStart(2, "0");
-    const rand = Math.floor(Math.random() * 900 + 100);
-    codeInput.value = "" + y + m + d + rand;
-  }
-
-  if ($("expressUnitPrice") && !$("expressUnitPrice").value) {
-    $("expressUnitPrice").value = localStorage.getItem("expressUnitPrice") || "";
-  }
-  if ($("airUnitPrice") && !$("airUnitPrice").value) {
-    $("airUnitPrice").value = localStorage.getItem("airUnitPrice") || "";
-  }
-  if ($("seaUnitPrice") && !$("seaUnitPrice").value) {
-    $("seaUnitPrice").value = localStorage.getItem("seaUnitPrice") || "";
-  }
+  initPhotoPreview();
+  initDeletePhoto();
+  initProductCode();
+  initPriceCache();
 
   if ($("expressTax") && !$("expressTax").value) $("expressTax").value = "1";
   if ($("airTax") && !$("airTax").value) $("airTax").value = "1";
   if ($("seaTax") && !$("seaTax").value) $("seaTax").value = "1";
 
-  document.querySelectorAll(".calc").forEach(el => {
-    el.addEventListener("input", calcAll);
-    el.addEventListener("change", calcAll);
-  });
-
   [
-    "expressUnitPrice", "airUnitPrice", "seaUnitPrice",
-    "lengthCm", "widthCm", "heightCm", "actualWeight",
-    "warehouseUsd", "deliveryUsd", "returnCostRmb",
-    "expressTax", "airTax", "seaTax"
-  ].forEach(id => {
-    const el = $(id);
-    if (!el) return;
-    el.addEventListener("input", calcAll);
-    el.addEventListener("change", calcAll);
-  });
+    "exchangeRate",
+    "purchaseCost",
+    "commissionRate",
+    "fenxiaoPrice",
+    "adRate",
+    "sellingPriceUsd",
+    "lengthCm",
+    "widthCm",
+    "heightCm",
+    "actualWeight",
+    "expressUnitPrice",
+    "airUnitPrice",
+    "seaUnitPrice",
+    "expressTax",
+    "airTax",
+    "seaTax",
+    "warehouseUsd",
+    "deliveryUsd",
+    "returnCostRmb"
+  ].forEach(bindCalc);
 
-  ["expressUnitPrice", "airUnitPrice", "seaUnitPrice"].forEach(id => {
-    const el = $(id);
-    if (!el) return;
-    el.addEventListener("change", function () {
-      localStorage.setItem(id, this.value || "");
-    });
-  });
-
+  savePriceCache();
   calcAll();
 
   if ($("exchangeRate") && !$("exchangeRate").value) {
@@ -1687,7 +1741,7 @@ app.post("/save", checkLogin, upload.single("photo"), (req, res) => {
   fenxiaoPrice, adRate, profitCostDiff, profitRate1,
   sellingPriceUsd, sellingPriceRmb, profitSellDiff, profitRate2,
   remark, packageType,
-  volumeWeight6000, volumeWeight5000, actualWeight, lengthCm, widthCm, heightCm,
+  volumeWeight6000, volumeWeight5000, actualWeight, lengthCm, widthCm, heightCm, sizeTier,
   expressFee, expressProfit, expressProfitRate,
   airFee, airProfit, airProfitRate,
   seaFee, seaProfit, seaProfitRate,
@@ -1706,7 +1760,7 @@ app.post("/save", checkLogin, upload.single("photo"), (req, res) => {
   ?, ?, ?, ?,
   ?, ?, ?, ?,
   ?, ?,
-  ?, ?, ?, ?, ?, ?,
+  ?, ?, ?, ?, ?, ?, ?,
   ?, ?, ?,
   ?, ?, ?,
   ?, ?, ?,
@@ -1746,6 +1800,7 @@ app.post("/save", checkLogin, upload.single("photo"), (req, res) => {
   d.lengthCm || "",
   d.widthCm || "",
   d.heightCm || "",
+  d.sizeTier || "",
   d.expressFee || "",
   d.expressProfit || "",
   d.expressProfitRate || "",
@@ -2324,7 +2379,7 @@ for(let k in d){
     fenxiaoPrice = ?, adRate = ?, profitCostDiff = ?, profitRate1 = ?,
     sellingPriceUsd = ?, sellingPriceRmb = ?, profitSellDiff = ?, profitRate2 = ?,
     remark = ?, packageType = ?,
-    volumeWeight6000 = ?, volumeWeight5000 = ?, actualWeight = ?, lengthCm = ?, widthCm = ?, heightCm = ?,
+    volumeWeight6000 = ?, volumeWeight5000 = ?, actualWeight = ?, lengthCm = ?, widthCm = ?, heightCm = ?, sizeTier = ?,
     expressFee = ?, expressProfit = ?, expressProfitRate = ?,
     airFee = ?, airProfit = ?, airProfitRate = ?,
     seaFee = ?, seaProfit = ?, seaProfitRate = ?,
@@ -2363,6 +2418,7 @@ for(let k in d){
   d.lengthCm || "",
   d.widthCm || "",
   d.heightCm || "",
+  d.sizeTier || "",
   d.expressFee || "",
   d.expressProfit || "",
   d.expressProfitRate || "",

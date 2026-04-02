@@ -2949,29 +2949,30 @@ async function translateToEnglish(text) {
   const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
   if (!apiKey) return text;
 
-  const url = "https://translation.googleapis.com/language/translate/v2";
+  try {
+    const url = "https://translation.googleapis.com/language/translate/v2";
 
-  const resp = await axios.post(
-    url,
-    null,
-    {
+    const resp = await axios.post(url, null, {
       params: {
         key: apiKey,
         q: text,
         target: "en",
         format: "text"
       }
-    }
-  );
+    });
 
-  const translated =
-    resp.data &&
-    resp.data.data &&
-    resp.data.data.translations &&
-    resp.data.data.translations[0] &&
-    resp.data.data.translations[0].translatedText;
+    const translated =
+      resp.data &&
+      resp.data.data &&
+      resp.data.data.translations &&
+      resp.data.data.translations[0] &&
+      resp.data.data.translations[0].translatedText;
 
-  return translated || text;
+    return translated || text;
+  } catch (e) {
+    console.error("Google 翻译失败：", e.response?.data || e.message);
+    return text;
+  }
 }
 
 app.post("/api/competitors", async (req, res) => {
@@ -2982,20 +2983,25 @@ app.post("/api/competitors", async (req, res) => {
 
   try {
     const englishKeyword = await translateToEnglish(rawName);
+    console.log("原始产品名：", rawName);
+    console.log("翻译后关键词：", englishKeyword);
+    console.log("搜索关键词：", englishKeyword);
 
     const serpKey = process.env.SERPAPI_KEY;
+    console.log("SERPAPI_KEY存在吗：", !!serpKey);
     if (!serpKey) {
       return res.status(500).json({ error: "缺少 SERPAPI_KEY" });
     }
 
-    const serpResp = await axios.get("https://serpapi.com/search.json", {
-      params: {
-        engine: "amazon",
-        amazon_domain: "amazon.com",
-        search_term: englishKeyword,
-        api_key: serpKey
-      }
-    });
+    console.log("开始请求 SerpApi...");
+    const serpResp = await axios.get("https://serpapi.com/search", {
+  params: {
+    engine: "amazon",
+    amazon_domain: "amazon.com",
+    k: englishKeyword,
+    api_key: serpKey
+  }
+});
 
     const organic = Array.isArray(serpResp.data.organic_results)
       ? serpResp.data.organic_results
@@ -3029,9 +3035,12 @@ app.post("/api/competitors", async (req, res) => {
 
     res.json(top3);
   } catch (e) {
-    console.error("竞品生成失败：", e.response?.data || e.message);
-    res.status(500).json({ error: "竞品生成失败" });
-  }
+  console.error("竞品生成失败：", e.response?.data || e.message);
+  res.status(500).json({
+    error: "竞品生成失败",
+    detail: e.response?.data || e.message
+  });
+}
 });
 
 cron.schedule("0 18 * * 6", () => {

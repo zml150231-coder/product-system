@@ -358,6 +358,7 @@ db.run(`
 });
   
 app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 app.use(express.static(ROOT));
 app.use("/uploads", express.static(UPLOAD_DIR));
 
@@ -1377,11 +1378,10 @@ function calcAll() {
 
   const commissionRmb = sellingPriceUsd * (commissionRate / 100) * exchangeRate;
   const adCostRmb = sellingPriceUsd * (adRate / 100) * exchangeRate;
+  const fbaFeeRmb = (warehouseUsd + deliveryUsd) * exchangeRate;
 
   setVal("commissionRmb", commissionRmb);
   setVal("adCostRmb", adCostRmb);
-
-  const fbaFeeRmb = (warehouseUsd + deliveryUsd) * exchangeRate;
   setVal("fbaFeeRmb", fbaFeeRmb);
 
   const expressFee = expressTotalPrice + fbaFeeRmb + commissionRmb + returnCostRmb + adCostRmb;
@@ -1542,11 +1542,24 @@ window.addEventListener("DOMContentLoaded", () => {
     el.addEventListener("change", calcAll);
   });
 
-  ["expressUnitPrice", "airUnitPrice", "seaUnitPrice", "lengthCm", "widthCm", "heightCm", "actualWeight", "warehouseUsd", "deliveryUsd", "returnCostRmb", "expressTax", "airTax", "seaTax"].forEach(id => {
+  [
+    "expressUnitPrice", "airUnitPrice", "seaUnitPrice",
+    "lengthCm", "widthCm", "heightCm", "actualWeight",
+    "warehouseUsd", "deliveryUsd", "returnCostRmb",
+    "expressTax", "airTax", "seaTax"
+  ].forEach(id => {
     const el = $(id);
     if (!el) return;
     el.addEventListener("input", calcAll);
     el.addEventListener("change", calcAll);
+  });
+
+  ["expressUnitPrice", "airUnitPrice", "seaUnitPrice"].forEach(id => {
+    const el = $(id);
+    if (!el) return;
+    el.addEventListener("change", function () {
+      localStorage.setItem(id, this.value || "");
+    });
   });
 
   calcAll();

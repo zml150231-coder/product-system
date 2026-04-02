@@ -10,6 +10,7 @@ const XLSX = require("xlsx");
 const cron = require("node-cron");
 const axios = require("axios");
 const app = express();
+console.log("RUNNING APP FILE:", __filename);
 const ROOT = __dirname;
 const UPLOAD_DIR = path.join(ROOT, "uploads");
 

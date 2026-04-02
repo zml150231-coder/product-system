@@ -1303,6 +1303,276 @@ function $(id) {
   return document.getElementById(id);
 }
 
+function num(id) {
+  const el = $(id);
+  if (!el) return 0;
+  const v = parseFloat(el.value);
+  return isNaN(v) ? 0 : v;
+}
+
+function setVal(id, val, digits = 3) {
+  const el = $(id);
+  if (!el) return;
+  if (val === "" || val === null || val === undefined || isNaN(val)) {
+    el.value = "";
+  } else {
+    el.value = Number(val).toFixed(digits);
+  }
+}
+
+function calcAll() {
+  const exchangeRate = num("exchangeRate");
+  const purchaseCost = num("purchaseCost");
+  const commissionRate = num("commissionRate");
+  const fenxiaoPrice = num("fenxiaoPrice");
+  const adRate = num("adRate");
+  const sellingPriceUsd = num("sellingPriceUsd");
+
+  const lengthCm = num("lengthCm");
+  const widthCm = num("widthCm");
+  const heightCm = num("heightCm");
+  const actualWeight = num("actualWeight");
+
+  const expressUnitPrice = num("expressUnitPrice");
+  const airUnitPrice = num("airUnitPrice");
+  const seaUnitPrice = num("seaUnitPrice");
+
+  const expressTax = num("expressTax") || 1;
+  const airTax = num("airTax") || 1;
+  const seaTax = num("seaTax") || 1;
+
+  const warehouseUsd = num("warehouseUsd");
+  const deliveryUsd = num("deliveryUsd");
+  const returnCostRmb = num("returnCostRmb");
+
+  const volumeWeight6000 = lengthCm * widthCm * heightCm / 6000;
+  const volumeWeight5000 = lengthCm * widthCm * heightCm / 5000;
+
+  setVal("volumeWeight6000", volumeWeight6000);
+  setVal("volumeWeight5000", volumeWeight5000);
+
+  const sellingPriceRmb = sellingPriceUsd * exchangeRate;
+  const profitCostDiff = fenxiaoPrice - purchaseCost;
+  const profitRate1 = purchaseCost ? (profitCostDiff / purchaseCost) * 100 : 0;
+  const profitSellDiff = sellingPriceRmb - fenxiaoPrice;
+  const profitRate2 = fenxiaoPrice ? (profitSellDiff / fenxiaoPrice) * 100 : 0;
+
+  setVal("sellingPriceRmb", sellingPriceRmb);
+  setVal("profitCostDiff", profitCostDiff);
+  setVal("profitRate1", profitRate1);
+  setVal("profitSellDiff", profitSellDiff);
+  setVal("profitRate2", profitRate2);
+
+  const expressWeightQty = Math.max(actualWeight, volumeWeight6000);
+  const airWeightQty = Math.max(actualWeight, volumeWeight6000);
+  const seaWeightQty = Math.max(actualWeight, volumeWeight5000);
+
+  setVal("expressWeightQty", expressWeightQty);
+  setVal("airWeightQty", airWeightQty);
+  setVal("seaWeightQty", seaWeightQty);
+
+  const expressTotalPrice = expressWeightQty * expressUnitPrice * expressTax;
+  const airTotalPrice = airWeightQty * airUnitPrice * airTax;
+  const seaTotalPrice = seaWeightQty * seaUnitPrice * seaTax;
+
+  setVal("expressTotalPrice", expressTotalPrice);
+  setVal("airTotalPrice", airTotalPrice);
+  setVal("seaTotalPrice", seaTotalPrice);
+
+  const commissionRmb = sellingPriceUsd * (commissionRate / 100) * exchangeRate;
+  const adCostRmb = sellingPriceUsd * (adRate / 100) * exchangeRate;
+
+  setVal("commissionRmb", commissionRmb);
+  setVal("adCostRmb", adCostRmb);
+
+  const fbaFeeRmb = (warehouseUsd + deliveryUsd) * exchangeRate;
+  setVal("fbaFeeRmb", fbaFeeRmb);
+
+  if ($("returnCostRmb") && !$("returnCostRmb").value) {
+    setVal("returnCostRmb", 0);
+  }
+
+  const expressFee = expressTotalPrice + fbaFeeRmb + commissionRmb + returnCostRmb + adCostRmb;
+  const airFee = airTotalPrice + fbaFeeRmb + commissionRmb + returnCostRmb + adCostRmb;
+  const seaFee = seaTotalPrice + fbaFeeRmb + commissionRmb + returnCostRmb + adCostRmb;
+
+  setVal("expressFee", expressFee);
+  setVal("airFee", airFee);
+  setVal("seaFee", seaFee);
+
+  const expressProfit = sellingPriceRmb - purchaseCost - expressFee;
+  const airProfit = sellingPriceRmb - purchaseCost - airFee;
+  const seaProfit = sellingPriceRmb - purchaseCost - seaFee;
+
+  setVal("expressProfit", expressProfit);
+  setVal("airProfit", airProfit);
+  setVal("seaProfit", seaProfit);
+
+  const expressProfitRate = sellingPriceRmb ? (expressProfit / sellingPriceRmb) * 100 : 0;
+  const airProfitRate = sellingPriceRmb ? (airProfit / sellingPriceRmb) * 100 : 0;
+  const seaProfitRate = sellingPriceRmb ? (seaProfit / sellingPriceRmb) * 100 : 0;
+
+  setVal("expressProfitRate", expressProfitRate);
+  setVal("airProfitRate", airProfitRate);
+  setVal("seaProfitRate", seaProfitRate);
+}
+
+function fetchRate() {
+  fetch("https://open.er-api.com/v6/latest/USD")
+    .then(res => res.json())
+    .then(data => {
+      const rate = Number((data && data.rates && data.rates.CNY) || 0);
+      if (!rate) {
+        alert("汇率获取失败");
+        return;
+      }
+      $("exchangeRate").value = (rate * 0.9).toFixed(4);
+      calcAll();
+    })
+    .catch(err => {
+      console.error("汇率接口失败：", err);
+      alert("汇率获取失败");
+    });
+}
+
+async function autoFillCompetitors() {
+  const name = $("productName") ? $("productName").value.trim() : "";
+  if (!name) {
+    alert("先输入产品名称");
+    return;
+  }
+
+  const btn = document.querySelector('button[onclick="autoFillCompetitors()"]');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "生成中...";
+  }
+
+  try {
+    const res = await fetch("/api/competitors", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error || "竞品生成失败");
+    }
+
+    for (let i = 0; i < 3; i++) {
+      const item = data[i] || {};
+      if ($("competitor" + (i + 1) + "Name")) $("competitor" + (i + 1) + "Name").value = item.cn || "";
+      if ($("competitor" + (i + 1) + "Link")) $("competitor" + (i + 1) + "Link").value = item.link || "";
+      if ($("competitor" + (i + 1) + "Image")) $("competitor" + (i + 1) + "Image").value = item.image || "";
+      if ($("competitor" + (i + 1) + "Price")) $("competitor" + (i + 1) + "Price").value = item.price || "";
+    }
+  } catch (err) {
+    console.error(err);
+    alert(err.message || "竞品生成失败");
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "自动生成Amazon竞品链接";
+    }
+  }
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  const form = $("productForm");
+  if (form) {
+    form.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && e.target.tagName !== "TEXTAREA") {
+        e.preventDefault();
+        e.target.blur();
+      }
+    });
+  }
+
+  const photoInput = $("photoInput");
+  const photoBox = $("photoPreviewBox");
+  if (photoInput && photoBox) {
+    photoInput.addEventListener("change", function () {
+      const file = this.files && this.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        photoBox.innerHTML = '<img src="' + e.target.result + '" style="max-width:100%;max-height:100%;object-fit:contain;">';
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  const deleteBtn = $("deletePhotoBtn");
+  if (deleteBtn) {
+    deleteBtn.addEventListener("click", function () {
+      const match = window.location.pathname.match(/^\/edit\/(\d+)$/);
+      if (match) {
+        if (confirm("确定删除这张照片吗？")) {
+          window.location.href = "/delete-photo/" + match[1];
+        }
+      } else {
+        if ($("photoInput")) $("photoInput").value = "";
+        if ($("photoPreviewBox")) {
+          $("photoPreviewBox").innerHTML = '<div class="photo-inner">ⓘ<span>暂无照片</span></div>';
+        }
+      }
+    });
+  }
+
+  const codeInput = $("productCode");
+  if (codeInput && (!codeInput.value || codeInput.value === "自动生成")) {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    const rand = Math.floor(Math.random() * 900 + 100);
+    codeInput.value = "" + y + m + d + rand;
+  }
+
+  if ($("expressUnitPrice") && !$("expressUnitPrice").value) {
+    $("expressUnitPrice").value = localStorage.getItem("expressUnitPrice") || "";
+  }
+  if ($("airUnitPrice") && !$("airUnitPrice").value) {
+    $("airUnitPrice").value = localStorage.getItem("airUnitPrice") || "";
+  }
+  if ($("seaUnitPrice") && !$("seaUnitPrice").value) {
+    $("seaUnitPrice").value = localStorage.getItem("seaUnitPrice") || "";
+  }
+
+  if ($("expressTax") && !$("expressTax").value) $("expressTax").value = "1";
+  if ($("airTax") && !$("airTax").value) $("airTax").value = "1";
+  if ($("seaTax") && !$("seaTax").value) $("seaTax").value = "1";
+
+  document.querySelectorAll(".calc").forEach(el => {
+    el.addEventListener("input", calcAll);
+    el.addEventListener("change", calcAll);
+  });
+
+  ["expressUnitPrice", "airUnitPrice", "seaUnitPrice"].forEach(id => {
+    const el = $(id);
+    if (!el) return;
+    el.addEventListener("change", function () {
+      localStorage.setItem(id, this.value || "");
+      calcAll();
+    });
+    el.addEventListener("input", calcAll);
+  });
+
+  calcAll();
+
+  if ($("exchangeRate") && !$("exchangeRate").value) {
+    fetchRate();
+  }
+});
+</script>
+
+<script>
+function $(id) {
+  return document.getElementById(id);
+}
+
 async function autoFillCompetitors() {
   const name = document.getElementById("productName").value.trim();
   if (!name) return alert("先输入产品名称");
@@ -1883,95 +2153,116 @@ app.post("/save", checkLogin, upload.single("photo"), (req, res) => {
     d.productCode = autoCode;
 
     const sql = `
-      INSERT INTO products (
-        formName, productName, productCode, exchangeRate, purchaseCost, commissionRate,
-        fenxiaoPrice, adRate, profitCostDiff, profitRate1,
-        sellingPriceUsd, sellingPriceRmb, profitSellDiff, profitRate2,
-        remark, packageType,
-        volumeWeight6000, volumeWeight5000, actualWeight, lengthCm, widthCm, heightCm,
-        expressFee, expressProfit, expressProfitRate,
-        airFee, airProfit, airProfitRate,
-        seaFee, seaProfit, seaProfitRate,
-        expressWeightQty, expressUnitPrice, expressTax, expressTotalPrice,
-        airWeightQty, airUnitPrice, airTax, airTotalPrice,
-        seaWeightQty, seaUnitPrice, seaTax, seaTotalPrice,
-        fbaFeeRmb, commissionRmb, returnCostRmb, warehouseUsd, deliveryUsd, adCostRmb,
-        photoPath, ownerUserId, ownerUsername, lastEditedByUserId, lastEditedByUsername,
-        createdAt, updatedAt
-      ) VALUES (
-        ?, ?, ?, ?, ?, ?,
-        ?, ?, ?, ?,
-        ?, ?, ?, ?,
-        ?, ?,
-        ?, ?, ?, ?, ?, ?,
-        ?, ?, ?,
-        ?, ?, ?,
-        ?, ?, ?,
-        ?, ?, ?, ?,
-        ?, ?, ?, ?,
-        ?, ?, ?, ?,
-        ?, ?, ?, ?, ?, ?,
-        ?, ?, ?, ?, ?,
-        datetime('now','localtime'), datetime('now','localtime')
-      )
+    INSERT INTO products (
+  formName, productName, productCode, exchangeRate, purchaseCost, commissionRate,
+  fenxiaoPrice, adRate, profitCostDiff, profitRate1,
+  sellingPriceUsd, sellingPriceRmb, profitSellDiff, profitRate2,
+  remark, packageType,
+  volumeWeight6000, volumeWeight5000, actualWeight, lengthCm, widthCm, heightCm,
+  expressFee, expressProfit, expressProfitRate,
+  airFee, airProfit, airProfitRate,
+  seaFee, seaProfit, seaProfitRate,
+  expressWeightQty, expressUnitPrice, expressTax, expressTotalPrice,
+  airWeightQty, airUnitPrice, airTax, airTotalPrice,
+  seaWeightQty, seaUnitPrice, seaTax, seaTotalPrice,
+  fbaFeeRmb, commissionRmb, returnCostRmb, warehouseUsd, deliveryUsd, adCostRmb,
+  competitor1Name, competitor1Link, competitor1Image, competitor1Price,
+  competitor2Name, competitor2Link, competitor2Image, competitor2Price,
+  competitor3Name, competitor3Link, competitor3Image, competitor3Price,
+  changedFields,
+  photoPath, ownerUserId, ownerUsername, lastEditedByUserId, lastEditedByUsername,
+  createdAt, updatedAt
+) VALUES (
+  ?, ?, ?, ?, ?, ?,
+  ?, ?, ?, ?,
+  ?, ?, ?, ?,
+  ?, ?,
+  ?, ?, ?, ?, ?, ?,
+  ?, ?, ?,
+  ?, ?, ?,
+  ?, ?, ?,
+  ?, ?, ?, ?,
+  ?, ?, ?, ?,
+  ?, ?, ?, ?,
+  ?, ?, ?, ?, ?, ?,
+  ?, ?, ?, ?,
+  ?, ?, ?, ?,
+  ?, ?, ?, ?,
+  ?,
+  ?, ?, ?, ?, ?,
+  datetime('now','localtime'), datetime('now','localtime')
+)
     `;
 
-    const values = [
-      d.formName || "",
-      d.productName || "",
-      d.productCode || "",
-      d.exchangeRate || "",
-      d.purchaseCost || "",
-      d.commissionRate || "",
-      d.fenxiaoPrice || "",
-      d.adRate || "",
-      d.profitCostDiff || "",
-      d.profitRate1 || "",
-      d.sellingPriceUsd || "",
-      d.sellingPriceRmb || "",
-      d.profitSellDiff || "",
-      d.profitRate2 || "",
-      d.remark || "",
-      d.packageType || "",
-      d.volumeWeight6000 || "",
-      d.volumeWeight5000 || "",
-      d.actualWeight || "",
-      d.lengthCm || "",
-      d.widthCm || "",
-      d.heightCm || "",
-      d.expressFee || "",
-      d.expressProfit || "",
-      d.expressProfitRate || "",
-      d.airFee || "",
-      d.airProfit || "",
-      d.airProfitRate || "",
-      d.seaFee || "",
-      d.seaProfit || "",
-      d.seaProfitRate || "",
-      d.expressWeightQty || "",
-      d.expressUnitPrice || "",
-      d.expressTax || "",
-      d.expressTotalPrice || "",
-      d.airWeightQty || "",
-      d.airUnitPrice || "",
-      d.airTax || "",
-      d.airTotalPrice || "",
-      d.seaWeightQty || "",
-      d.seaUnitPrice || "",
-      d.seaTax || "",
-      d.seaTotalPrice || "",
-      d.fbaFeeRmb || "",
-      d.commissionRmb || "",
-      d.returnCostRmb || "",
-      d.warehouseUsd || "",
-      d.deliveryUsd || "",
-      d.adCostRmb || "",
-      photoPath,
-      u.id,
-      u.username,
-      u.id,
-      u.username
-    ];
+   const values = [
+  d.formName || "",
+  d.productName || "",
+  d.productCode || "",
+  d.exchangeRate || "",
+  d.purchaseCost || "",
+  d.commissionRate || "",
+  d.fenxiaoPrice || "",
+  d.adRate || "",
+  d.profitCostDiff || "",
+  d.profitRate1 || "",
+  d.sellingPriceUsd || "",
+  d.sellingPriceRmb || "",
+  d.profitSellDiff || "",
+  d.profitRate2 || "",
+  d.remark || "",
+  d.packageType || "",
+  d.volumeWeight6000 || "",
+  d.volumeWeight5000 || "",
+  d.actualWeight || "",
+  d.lengthCm || "",
+  d.widthCm || "",
+  d.heightCm || "",
+  d.expressFee || "",
+  d.expressProfit || "",
+  d.expressProfitRate || "",
+  d.airFee || "",
+  d.airProfit || "",
+  d.airProfitRate || "",
+  d.seaFee || "",
+  d.seaProfit || "",
+  d.seaProfitRate || "",
+  d.expressWeightQty || "",
+  d.expressUnitPrice || "",
+  d.expressTax || "",
+  d.expressTotalPrice || "",
+  d.airWeightQty || "",
+  d.airUnitPrice || "",
+  d.airTax || "",
+  d.airTotalPrice || "",
+  d.seaWeightQty || "",
+  d.seaUnitPrice || "",
+  d.seaTax || "",
+  d.seaTotalPrice || "",
+  d.fbaFeeRmb || "",
+  d.commissionRmb || "",
+  d.returnCostRmb || "",
+  d.warehouseUsd || "",
+  d.deliveryUsd || "",
+  d.adCostRmb || "",
+  d.competitor1Name || "",
+  d.competitor1Link || "",
+  d.competitor1Image || "",
+  d.competitor1Price || "",
+  d.competitor2Name || "",
+  d.competitor2Link || "",
+  d.competitor2Image || "",
+  d.competitor2Price || "",
+  d.competitor3Name || "",
+  d.competitor3Link || "",
+  d.competitor3Image || "",
+  d.competitor3Price || "",
+  "[]",
+  photoPath,
+  u.id,
+  u.username,
+  u.id,
+  u.username
+];
 
     db.run(sql, values, function (err) {
       if (err) {
@@ -2498,40 +2789,96 @@ for(let k in d){
   }
 }
 
-    const sql = `
-      UPDATE products SET
-      
-        formName = ?, productName = ?, productCode = ?, exchangeRate = ?, purchaseCost = ?, commissionRate = ?,
-        fenxiaoPrice = ?, adRate = ?, profitCostDiff = ?, profitRate1 = ?,
-        sellingPriceUsd = ?, sellingPriceRmb = ?, profitSellDiff = ?, profitRate2 = ?,
-        remark = ?, packageType = ?,
-        volumeWeight6000 = ?, volumeWeight5000 = ?, actualWeight = ?, lengthCm = ?, widthCm = ?, heightCm = ?,
-        expressFee = ?, expressProfit = ?, expressProfitRate = ?,
-        airFee = ?, airProfit = ?, airProfitRate = ?,
-        seaFee = ?, seaProfit = ?, seaProfitRate = ?,
-        expressWeightQty = ?, expressUnitPrice = ?, expressTax = ?, expressTotalPrice = ?,
-        airWeightQty = ?, airUnitPrice = ?, airTax = ?, airTotalPrice = ?,
-        seaWeightQty = ?, seaUnitPrice = ?, seaTax = ?, seaTotalPrice = ?,
-        fbaFeeRmb = ?, commissionRmb = ?, returnCostRmb = ?, warehouseUsd = ?, deliveryUsd = ?, adCostRmb = ?, changedFields = ?,
-        photoPath = ?, lastEditedByUserId = ?, lastEditedByUsername = ?, updatedAt = datetime('now','localtime')
-      WHERE id = ?
-    `;
+  const sql = `
+  UPDATE products SET
+    formName = ?, productName = ?, productCode = ?, exchangeRate = ?, purchaseCost = ?, commissionRate = ?,
+    fenxiaoPrice = ?, adRate = ?, profitCostDiff = ?, profitRate1 = ?,
+    sellingPriceUsd = ?, sellingPriceRmb = ?, profitSellDiff = ?, profitRate2 = ?,
+    remark = ?, packageType = ?,
+    volumeWeight6000 = ?, volumeWeight5000 = ?, actualWeight = ?, lengthCm = ?, widthCm = ?, heightCm = ?,
+    expressFee = ?, expressProfit = ?, expressProfitRate = ?,
+    airFee = ?, airProfit = ?, airProfitRate = ?,
+    seaFee = ?, seaProfit = ?, seaProfitRate = ?,
+    expressWeightQty = ?, expressUnitPrice = ?, expressTax = ?, expressTotalPrice = ?,
+    airWeightQty = ?, airUnitPrice = ?, airTax = ?, airTotalPrice = ?,
+    seaWeightQty = ?, seaUnitPrice = ?, seaTax = ?, seaTotalPrice = ?,
+    fbaFeeRmb = ?, commissionRmb = ?, returnCostRmb = ?, warehouseUsd = ?, deliveryUsd = ?, adCostRmb = ?,
+    competitor1Name = ?, competitor1Link = ?, competitor1Image = ?, competitor1Price = ?,
+    competitor2Name = ?, competitor2Link = ?, competitor2Image = ?, competitor2Price = ?,
+    competitor3Name = ?, competitor3Link = ?, competitor3Image = ?, competitor3Price = ?,
+    changedFields = ?,
+    photoPath = ?, lastEditedByUserId = ?, lastEditedByUsername = ?, updatedAt = datetime('now','localtime')
+  WHERE id = ?
+`;
 
-    const values = [
-      d.formName || "", d.productName || "", d.productCode || "", d.exchangeRate || "", d.purchaseCost || "", d.commissionRate || "",
-      d.fenxiaoPrice || "", d.adRate || "", d.profitCostDiff || "", d.profitRate1 || "",
-      d.sellingPriceUsd || "", d.sellingPriceRmb || "", d.profitSellDiff || "", d.profitRate2 || "",
-      d.remark || "", d.packageType || "",
-      d.volumeWeight6000 || "", d.volumeWeight5000 || "", d.actualWeight || "", d.lengthCm || "", d.widthCm || "", d.heightCm || "",
-      d.expressFee || "", d.expressProfit || "", d.expressProfitRate || "",
-      d.airFee || "", d.airProfit || "", d.airProfitRate || "",
-      d.seaFee || "", d.seaProfit || "", d.seaProfitRate || "",
-      d.expressWeightQty || "", d.expressUnitPrice || "", d.expressTax || "", d.expressTotalPrice || "",
-      d.airWeightQty || "", d.airUnitPrice || "", d.airTax || "", d.airTotalPrice || "",
-      d.seaWeightQty || "", d.seaUnitPrice || "", d.seaTax || "", d.seaTotalPrice || "",
-      d.fbaFeeRmb || "", d.commissionRmb || "", d.returnCostRmb || "", d.warehouseUsd || "", d.deliveryUsd || "", d.adCostRmb || "",
-      newPhotoPath, user.id, user.username, id
-    ];
+ const values = [
+  d.formName || "",
+  d.productName || "",
+  d.productCode || "",
+  d.exchangeRate || "",
+  d.purchaseCost || "",
+  d.commissionRate || "",
+  d.fenxiaoPrice || "",
+  d.adRate || "",
+  d.profitCostDiff || "",
+  d.profitRate1 || "",
+  d.sellingPriceUsd || "",
+  d.sellingPriceRmb || "",
+  d.profitSellDiff || "",
+  d.profitRate2 || "",
+  d.remark || "",
+  d.packageType || "",
+  d.volumeWeight6000 || "",
+  d.volumeWeight5000 || "",
+  d.actualWeight || "",
+  d.lengthCm || "",
+  d.widthCm || "",
+  d.heightCm || "",
+  d.expressFee || "",
+  d.expressProfit || "",
+  d.expressProfitRate || "",
+  d.airFee || "",
+  d.airProfit || "",
+  d.airProfitRate || "",
+  d.seaFee || "",
+  d.seaProfit || "",
+  d.seaProfitRate || "",
+  d.expressWeightQty || "",
+  d.expressUnitPrice || "",
+  d.expressTax || "",
+  d.expressTotalPrice || "",
+  d.airWeightQty || "",
+  d.airUnitPrice || "",
+  d.airTax || "",
+  d.airTotalPrice || "",
+  d.seaWeightQty || "",
+  d.seaUnitPrice || "",
+  d.seaTax || "",
+  d.seaTotalPrice || "",
+  d.fbaFeeRmb || "",
+  d.commissionRmb || "",
+  d.returnCostRmb || "",
+  d.warehouseUsd || "",
+  d.deliveryUsd || "",
+  d.adCostRmb || "",
+  d.competitor1Name || "",
+  d.competitor1Link || "",
+  d.competitor1Image || "",
+  d.competitor1Price || "",
+  d.competitor2Name || "",
+  d.competitor2Link || "",
+  d.competitor2Image || "",
+  d.competitor2Price || "",
+  d.competitor3Name || "",
+  d.competitor3Link || "",
+  d.competitor3Image || "",
+  d.competitor3Price || "",
+  JSON.stringify(changedFields || []),
+  newPhotoPath,
+  user.id,
+  user.username,
+  id
+];
 
     db.run(sql, values, function(updateErr) {
       if (updateErr) {

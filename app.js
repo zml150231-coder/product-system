@@ -1977,19 +1977,19 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  const photoInput = document.getElementById("photoInput");
-  const photoBox = document.getElementById("photoPreviewBox");
-  if (photoInput && photoBox) {
-    photoInput.addEventListener("change", function () {
-      const file = this.files && this.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function (e) {
-        photoBox.innerHTML = '<img src="' + e.target.result + '" style="max-width:100%;max-height:100%;object-fit:contain;">';
-      };
-      reader.readAsDataURL(file);
-    });
-  }
+const photoInput = document.getElementById("photoInput");
+const photoBox = document.getElementById("photoPreviewBox");
+if (photoInput && photoBox) {
+  photoInput.addEventListener("change", function () {
+    const file = this.files && this.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      photoBox.innerHTML = '<img src="' + e.target.result + '" style="max-width:100%;max-height:100%;object-fit:contain;">';
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
   const codeInput = document.getElementById("productCode");
   if (codeInput && (!codeInput.value || codeInput.value === "自动生成")) {

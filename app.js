@@ -1297,6 +1297,12 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
 </div>
 <!-- 竞品区 END -->
 
+<div class="submit-wrap">
+  <button type="submit" class="submit-btn">${buttonText}</button>
+</div>
+
+</form>
+
 <script>
 function $(id) {
   return document.getElementById(id);

@@ -2080,6 +2080,10 @@ app.get("/list", checkLogin, (req, res) => {
         </script>
 
 <script>
+function $(id) {
+  return document.getElementById(id);
+}
+
 function num(id) {
   const el = document.getElementById(id);
   if (!el) return 0;

@@ -1,6 +1,3 @@
-from pathlib import Path
-
-app_js = r'''
 const express = require("express");
 const path = require("path");
 const fs = require("fs");
@@ -791,7 +788,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const deleteBtn = $("deletePhotoBtn");
   if (deleteBtn) {
     deleteBtn.addEventListener("click", function () {
-      const m = window.location.pathname.match(/^\/edit\/(\d+)$/);
+      const m = window.location.pathname.match(/^\\/edit\\/(\\d+)$/);
       if (m) {
         if (confirm("确定删除这张照片吗？")) {
           window.location.href = "/delete-photo/" + m[1];
@@ -1334,8 +1331,3 @@ app.get("/generate-weekly-pdf", checkLogin, checkAdmin, (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
-'''
-
-path = Path('/mnt/data/app.js')
-path.write_text(app_js, encoding='utf-8')
-print(path)

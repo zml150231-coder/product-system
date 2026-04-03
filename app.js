@@ -1520,11 +1520,17 @@ function initDeletePhoto() {
   if (!deleteBtn) return;
 
   deleteBtn.addEventListener("click", function () {
-    const match = window.location.pathname.match(/^\/edit\/(\d+)$/);
+    const pathParts = window.location.pathname.split("/");
+    const isEditPage =
+      pathParts.length >= 3 &&
+      pathParts[1] === "edit" &&
+      pathParts[2] &&
+      !isNaN(Number(pathParts[2]));
 
-    if (match) {
+    if (isEditPage) {
+      const editId = pathParts[2];
       if (confirm("确定删除这张照片吗？")) {
-        window.location.href = "/delete-photo/" + match[1];
+        window.location.href = "/delete-photo/" + editId;
       }
       return;
     }
@@ -2129,56 +2135,70 @@ function calcAll() {
   const airTax = num("airTax") || 1;
   const seaTax = num("seaTax") || 1;
 
-  const warehouseUsd = num("warehouseUsd");
-  const deliveryUsd = num("deliveryUsd");
-  const returnCostRmb = num("returnCostRmb");
-
   const volumeWeight1 = lengthCm * widthCm * heightCm / 6000;
-  const volumeWeight2 = lengthCm * widthCm * heightCm / 5000;
+const volumeWeight2 = lengthCm * widthCm * heightCm / 5000;
 
-  setVal("volumeWeight6000", volumeWeight1);
-  setVal("volumeWeight5000", volumeWeight2);
+setVal("volumeWeight6000", volumeWeight1);
+setVal("volumeWeight5000", volumeWeight2);
 
-  const sellingPriceRmb = sellingPriceUsd * exchangeRate;
-  const profitCostDiff = fenxiaoPrice - purchaseCost;
-  const profitRate1 = purchaseCost ? (profitCostDiff / purchaseCost) * 100 : 0;
-  const profitSellDiff = sellingPriceRmb - fenxiaoPrice;
-  const profitRate2 = fenxiaoPrice ? (profitSellDiff / fenxiaoPrice) * 100 : 0;
+const sellingPriceRmb = sellingPriceUsd * exchangeRate;
+const profitCostDiff = fenxiaoPrice - purchaseCost;
+const profitRate1 = purchaseCost ? (profitCostDiff / purchaseCost) * 100 : 0;
+const profitSellDiff = sellingPriceRmb - fenxiaoPrice;
+const profitRate2 = fenxiaoPrice ? (profitSellDiff / fenxiaoPrice) * 100 : 0;
 
-  setVal("sellingPriceRmb", sellingPriceRmb);
-  setVal("profitCostDiff", profitCostDiff);
-  setVal("profitRate1", profitRate1);
-  setVal("profitSellDiff", profitSellDiff);
-  setVal("profitRate2", profitRate2);
+setVal("sellingPriceRmb", sellingPriceRmb);
+setVal("profitCostDiff", profitCostDiff);
+setVal("profitRate1", profitRate1);
+setVal("profitSellDiff", profitSellDiff);
+setVal("profitRate2", profitRate2);
 
-  const expressWeightQty = Math.max(actualWeight, volumeWeight1);
-  const airWeightQty = Math.max(actualWeight, volumeWeight1);
-  const seaWeightQty = Math.max(actualWeight, volumeWeight2);
+const expressWeightQty = Math.max(actualWeight, volumeWeight1);
+const airWeightQty = Math.max(actualWeight, volumeWeight1);
+const seaWeightQty = Math.max(actualWeight, volumeWeight2);
 
-  setVal("expressWeightQty", expressWeightQty);
-  setVal("airWeightQty", airWeightQty);
-  setVal("seaWeightQty", seaWeightQty);
+setVal("expressWeightQty", expressWeightQty);
+setVal("airWeightQty", airWeightQty);
+setVal("seaWeightQty", seaWeightQty);
 
-  const expressTotalPrice = expressWeightQty * expressUnitPrice * expressTax;
-  const airTotalPrice = airWeightQty * airUnitPrice * airTax;
-  const seaTotalPrice = seaWeightQty * seaUnitPrice * seaTax;
+const expressTotalPrice = expressWeightQty * expressUnitPrice * expressTax;
+const airTotalPrice = airWeightQty * airUnitPrice * airTax;
+const seaTotalPrice = seaWeightQty * seaUnitPrice * seaTax;
 
-  setVal("expressTotalPrice", expressTotalPrice);
-  setVal("airTotalPrice", airTotalPrice);
-  setVal("seaTotalPrice", seaTotalPrice);
+setVal("expressTotalPrice", expressTotalPrice);
+setVal("airTotalPrice", airTotalPrice);
+setVal("seaTotalPrice", seaTotalPrice);
 
-  const commissionRmb = sellingPriceUsd * (commissionRate / 100) * exchangeRate;
-  const adCostRmb = sellingPriceUsd * (adRate / 100) * exchangeRate;
+const commissionRmb = sellingPriceUsd * (commissionRate / 100) * exchangeRate;
+const adCostRmb = sellingPriceUsd * (adRate / 100) * exchangeRate;
 
-  setVal("commissionRmb", commissionRmb);
-  setVal("adCostRmb", adCostRmb);
+setVal("commissionRmb", commissionRmb);
+setVal("adCostRmb", adCostRmb);
 
-  const fbaFeeRmb = (warehouseUsd + deliveryUsd) * exchangeRate;
-  setVal("fbaFeeRmb", fbaFeeRmb);
+// ===== 新增：按 Amazon 月度仓储费自动算 =====
+// 立方英尺 = cm³ / 28316.8466
+const cubicFeet =
+  lengthCm > 0 && widthCm > 0 && heightCm > 0
+    ? (lengthCm * widthCm * heightCm) / 28316.8466
+    : 0;
 
-  if (!document.getElementById("returnCostRmb").value) {
-    setVal("returnCostRmb", 0);
-  }
+// 1-9 月按 0.78 USD / cubic foot
+const warehouseUsd = cubicFeet * 0.78;
+
+// 配送+分拣先默认 0
+const deliveryUsd = 0;
+
+// FBA费用(RMB)
+const fbaFeeRmb = (warehouseUsd + deliveryUsd) * exchangeRate;
+
+// 退货成本(RMB) = 佣金的20%，但最高 5 美元封顶
+const returnCostRmb = Math.min(commissionRmb * 0.2, 5 * exchangeRate);
+
+// 回填到页面
+setVal("warehouseUsd", warehouseUsd);
+setVal("deliveryUsd", deliveryUsd);
+setVal("fbaFeeRmb", fbaFeeRmb);
+setVal("returnCostRmb", returnCostRmb);
 
   const expressFee = expressTotalPrice + fbaFeeRmb + commissionRmb + returnCostRmb + adCostRmb;
   const airFee = airTotalPrice + fbaFeeRmb + commissionRmb + returnCostRmb + adCostRmb;

@@ -309,6 +309,15 @@ db.run(`ALTER TABLE products ADD COLUMN competitor3Name TEXT`, ()=>{});
 db.run(`ALTER TABLE products ADD COLUMN competitor3Link TEXT`, ()=>{});
 db.run(`ALTER TABLE products ADD COLUMN competitor3Image TEXT`, ()=>{});
 db.run(`ALTER TABLE products ADD COLUMN competitor3Price TEXT`, ()=>{});
+db.run(`ALTER TABLE products ADD COLUMN competitor4Name TEXT`, ()=>{});
+db.run(`ALTER TABLE products ADD COLUMN competitor4Link TEXT`, ()=>{});
+db.run(`ALTER TABLE products ADD COLUMN competitor4Image TEXT`, ()=>{});
+db.run(`ALTER TABLE products ADD COLUMN competitor4Price TEXT`, ()=>{});
+
+db.run(`ALTER TABLE products ADD COLUMN competitor5Name TEXT`, ()=>{});
+db.run(`ALTER TABLE products ADD COLUMN competitor5Link TEXT`, ()=>{});
+db.run(`ALTER TABLE products ADD COLUMN competitor5Image TEXT`, ()=>{});
+db.run(`ALTER TABLE products ADD COLUMN competitor5Price TEXT`, ()=>{});
 
 // 为了按图片规则计算，必须补一个尺寸分段字段
 db.run(`ALTER TABLE products ADD COLUMN sizeTier TEXT`, ()=>{});
@@ -1015,7 +1024,7 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
           </tr>
           <tr>
             <td class="label">产品编号</td>
-            <td><input class="input readonly-gray" type="text" name="productCode" id="productCode" value="${esc(row.productCode || "自动生成")}" readonly /></td>
+            <td><input class="input" type="text" name="productCode" id="productCode" value="${esc(row.productCode || "自动生成")}" /></td>
             <td class="label">汇率</td>
             <td>
               <div style="display:flex;gap:8px;">
@@ -1107,18 +1116,10 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
   <tr>
   <td class="label">尺寸分段*</td>
   <td>
-    <select class="input calc" name="sizeTier" id="sizeTier">
-      <option value="">请选择</option>
-      <option value="small_standard" ${row.sizeTier === "small_standard" ? "selected" : ""}>小号标准尺寸</option>
-      <option value="large_standard" ${row.sizeTier === "large_standard" ? "selected" : ""}>大号标准尺寸</option>
-      <option value="large_bulky" ${row.sizeTier === "large_bulky" ? "selected" : ""}>大号大件</option>
-      <option value="oversize_0_50" ${row.sizeTier === "oversize_0_50" ? "selected" : ""}>超大件 0-50磅</option>
-      <option value="oversize_50_70" ${row.sizeTier === "oversize_50_70" ? "selected" : ""}>超大件 50-70磅</option>
-      <option value="oversize_70_150" ${row.sizeTier === "oversize_70_150" ? "selected" : ""}>超大件 70-150磅</option>
-      <option value="oversize_150_plus" ${row.sizeTier === "oversize_150_plus" ? "selected" : ""}>超大件 150磅以上</option>
-    </select>
+    <input type="hidden" name="sizeTier" id="sizeTier" value="${esc(row.sizeTier || "")}" />
+    <input class="input readonly-gray" type="text" id="sizeTierText" value="${esc(row.sizeTier || "")}" readonly />
   </td>
-  <td class="money-tag">FBA用</td>
+  <td class="money-tag">自动识别</td>
   <td colspan="4"></td>
 </tr>
           
@@ -1288,6 +1289,22 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
     </tr>
 
     <tr>
+  <td class="label">竞品4</td>
+  <td><input class="input" name="competitor4Name" id="competitor4Name" value="${esc(row.competitor4Name||"")}" /></td>
+  <td><input class="input" name="competitor4Link" id="competitor4Link" value="${esc(row.competitor4Link||"")}" /></td>
+  <td><input class="input" name="competitor4Image" id="competitor4Image" value="${esc(row.competitor4Image||"")}" /></td>
+  <td><input class="input" name="competitor4Price" id="competitor4Price" value="${esc(row.competitor4Price||"")}" /></td>
+</tr>
+
+<tr>
+  <td class="label">竞品5</td>
+  <td><input class="input" name="competitor5Name" id="competitor5Name" value="${esc(row.competitor5Name||"")}" /></td>
+  <td><input class="input" name="competitor5Link" id="competitor5Link" value="${esc(row.competitor5Link||"")}" /></td>
+  <td><input class="input" name="competitor5Image" id="competitor5Image" value="${esc(row.competitor5Image||"")}" /></td>
+  <td><input class="input" name="competitor5Price" id="competitor5Price" value="${esc(row.competitor5Price||"")}" /></td>
+</tr>
+
+    <tr>
       <td class="label">自动生成</td>
       <td colspan="4">
         <button type="button" class="small-btn" onclick="autoFillCompetitors()">自动生成Amazon竞品链接</button>
@@ -1326,6 +1343,213 @@ function setVal(id, val, digits = 3) {
   el.value = n.toFixed(digits);
 }
 
+function cmToIn(cm) {
+  return cm / 2.54;
+}
+
+function kgToLb(kg) {
+  return kg * 2.2046226218;
+}
+
+function getSortedDimsIn(lengthCm, widthCm, heightCm) {
+  const arr = [cmToIn(lengthCm), cmToIn(widthCm), cmToIn(heightCm)]
+    .filter(n => Number.isFinite(n))
+    .sort((a, b) => b - a);
+  return {
+    longest: arr[0] || 0,
+    median: arr[1] || 0,
+    shortest: arr[2] || 0
+  };
+}
+
+function getLengthPlusGirth(longest, median, shortest) {
+  return longest + 2 * (median + shortest);
+}
+
+function getPriceBand(sellingPriceUsd) {
+  if (sellingPriceUsd < 10) return "lt10";
+  if (sellingPriceUsd <= 50) return "10to50";
+  return "gt50";
+}
+
+function pickPriceBandValue(band, lt10, mid, gt50) {
+  if (band === "lt10") return lt10;
+  if (band === "10to50") return mid;
+  return gt50;
+}
+
+function sizeTierLabel(code) {
+  const map = {
+    small_standard: "小号标准尺寸",
+    large_standard: "大号标准尺寸",
+    small_bulky: "小号大件",
+    large_bulky: "大号大件",
+    oversize_0_50: "超大件 0-50磅",
+    oversize_50_70: "超大件 50-70磅",
+    oversize_70_150: "超大件 70-150磅",
+    oversize_150_plus: "超大件 150磅以上"
+  };
+  return map[code] || "";
+}
+
+function detectSizeTier(lengthCm, widthCm, heightCm, actualWeightKg) {
+  if (!(lengthCm > 0 && widthCm > 0 && heightCm > 0 && actualWeightKg > 0)) {
+    return "";
+  }
+
+  const { longest, median, shortest } = getSortedDimsIn(lengthCm, widthCm, heightCm);
+  const unitWeightLb = kgToLb(actualWeightKg);
+  const lengthPlusGirth = getLengthPlusGirth(longest, median, shortest);
+
+  if (
+    unitWeightLb <= 1 &&
+    longest <= 15 &&
+    median <= 12 &&
+    shortest <= 0.75
+  ) {
+    return "small_standard";
+  }
+
+  if (
+    unitWeightLb <= 20 &&
+    longest <= 18 &&
+    median <= 14 &&
+    shortest <= 8
+  ) {
+    return "large_standard";
+  }
+
+  if (
+    unitWeightLb <= 50 &&
+    longest <= 37 &&
+    median <= 28 &&
+    shortest <= 20 &&
+    lengthPlusGirth <= 130
+  ) {
+    return "small_bulky";
+  }
+
+  if (
+    unitWeightLb <= 50 &&
+    longest <= 59 &&
+    median <= 33 &&
+    shortest <= 33 &&
+    lengthPlusGirth <= 130
+  ) {
+    return "large_bulky";
+  }
+
+  if (unitWeightLb <= 50) return "oversize_0_50";
+  if (unitWeightLb <= 70) return "oversize_50_70";
+  if (unitWeightLb <= 150) return "oversize_70_150";
+  return "oversize_150_plus";
+}
+
+function getAmazonShippingWeightLb(sizeTier, lengthCm, widthCm, heightCm, actualWeightKg) {
+  if (!sizeTier) return 0;
+
+  const unitWeightLb = kgToLb(actualWeightKg);
+  const { longest, median, shortest } = getSortedDimsIn(lengthCm, widthCm, heightCm);
+
+  // Amazon 规则：
+  // small_standard、oversize_150_plus 直接用商品重量
+  if (sizeTier === "small_standard" || sizeTier === "oversize_150_plus") {
+    return unitWeightLb;
+  }
+
+  // large standard / small bulky / large bulky / extra-large:
+  // 用 max(unit weight, dimensional weight)
+  // 并且宽、高至少按 2 inch 算
+  const dimWeightLb = (longest * Math.max(median, 2) * Math.max(shortest, 2)) / 139;
+
+  return Math.max(unitWeightLb, dimWeightLb);
+}
+
+function ceilQuarter(x) {
+  return Math.ceil((x * 4) - 1e-9) / 4;
+}
+
+function ceilPound(x) {
+  return Math.ceil(x - 1e-9);
+}
+
+// 按你截图里的“自 2026 年 1 月 15 日起”非旺季费率
+function getFbaFeeUsd2026(sizeTier, shippingWeightLb, sellingPriceUsd) {
+  if (!sizeTier || shippingWeightLb <= 0) return 0;
+
+  const band = getPriceBand(sellingPriceUsd);
+  const oz = shippingWeightLb * 16;
+
+  if (sizeTier === "small_standard") {
+    if (oz <= 2)  return pickPriceBandValue(band, 2.43, 3.32, 3.58);
+    if (oz <= 4)  return pickPriceBandValue(band, 2.49, 3.42, 3.68);
+    if (oz <= 6)  return pickPriceBandValue(band, 2.56, 3.45, 3.71);
+    if (oz <= 8)  return pickPriceBandValue(band, 2.66, 3.54, 3.80);
+    if (oz <= 10) return pickPriceBandValue(band, 2.77, 3.68, 3.94);
+    if (oz <= 12) return pickPriceBandValue(band, 2.82, 3.78, 4.04);
+    if (oz <= 14) return pickPriceBandValue(band, 2.92, 3.91, 4.17);
+    return pickPriceBandValue(band, 2.95, 3.96, 4.22); // 14-16 oz
+  }
+
+  if (sizeTier === "large_standard") {
+    if (oz <= 4)  return pickPriceBandValue(band, 2.91, 3.73, 3.99);
+    if (oz <= 8)  return pickPriceBandValue(band, 3.13, 3.95, 4.21);
+    if (oz <= 12) return pickPriceBandValue(band, 3.38, 4.20, 4.46);
+    if (oz <= 16) return pickPriceBandValue(band, 3.78, 4.60, 4.86);
+
+    if (shippingWeightLb <= 1.25) return pickPriceBandValue(band, 4.22, 5.04, 5.30);
+    if (shippingWeightLb <= 1.50) return pickPriceBandValue(band, 4.60, 5.42, 5.68);
+    if (shippingWeightLb <= 1.75) return pickPriceBandValue(band, 4.75, 5.57, 5.83);
+    if (shippingWeightLb <= 2.00) return pickPriceBandValue(band, 5.00, 5.82, 6.08);
+    if (shippingWeightLb <= 2.25) return pickPriceBandValue(band, 5.10, 5.92, 6.18);
+    if (shippingWeightLb <= 2.50) return pickPriceBandValue(band, 5.28, 6.10, 6.36);
+    if (shippingWeightLb <= 2.75) return pickPriceBandValue(band, 5.44, 6.26, 6.52);
+    if (shippingWeightLb <= 3.00) return pickPriceBandValue(band, 5.85, 6.67, 6.93);
+
+    const base = pickPriceBandValue(band, 6.15, 6.97, 7.23);
+    const extraQuarterLb = Math.ceil(((shippingWeightLb - 3) * 4) - 1e-9);
+    return base + Math.max(0, extraQuarterLb) * 0.08;
+  }
+
+  if (sizeTier === "small_bulky") {
+    const base = pickPriceBandValue(band, 6.78, 7.55, 7.55);
+    const extraLb = Math.max(0, ceilPound(shippingWeightLb - 1));
+    return base + extraLb * 0.38;
+  }
+
+  if (sizeTier === "large_bulky") {
+    const base = pickPriceBandValue(band, 8.58, 9.35, 9.35);
+    const extraLb = Math.max(0, ceilPound(shippingWeightLb - 1));
+    return base + extraLb * 0.38;
+  }
+
+  if (sizeTier === "oversize_0_50") {
+    const base = pickPriceBandValue(band, 25.56, 26.33, 26.33);
+    const extraLb = Math.max(0, ceilPound(shippingWeightLb - 1));
+    return base + extraLb * 0.38;
+  }
+
+  if (sizeTier === "oversize_50_70") {
+    const base = pickPriceBandValue(band, 36.55, 37.32, 37.32);
+    const extraLb = Math.max(0, ceilPound(shippingWeightLb - 51));
+    return base + extraLb * 0.75;
+  }
+
+  if (sizeTier === "oversize_70_150") {
+    const base = pickPriceBandValue(band, 50.55, 51.32, 51.32);
+    const extraLb = Math.max(0, ceilPound(shippingWeightLb - 71));
+    return base + extraLb * 0.75;
+  }
+
+  if (sizeTier === "oversize_150_plus") {
+    const base = pickPriceBandValue(band, 194.18, 194.95, 194.95);
+    const extraLb = Math.max(0, ceilPound(shippingWeightLb - 151));
+    return base + extraLb * 0.19;
+  }
+
+  return 0;
+}
+
 function calcAll() {
   const exchangeRate = num("exchangeRate");
   const purchaseCost = num("purchaseCost");
@@ -1347,75 +1571,71 @@ function calcAll() {
   const airTax = num("airTax") || 1;
   const seaTax = num("seaTax") || 1;
 
-  const warehouseUsd = num("warehouseUsd");
-  const deliveryUsd = num("deliveryUsd");
-  const returnCostRmb = num("returnCostRmb");
+  const volumeWeight6000 = readOrCalc("volumeWeight6000", lengthCm * widthCm * heightCm / 6000);
+  const volumeWeight5000 = readOrCalc("volumeWeight5000", lengthCm * widthCm * heightCm / 5000);
 
-  const volumeWeight6000 = lengthCm * widthCm * heightCm / 6000;
-  const volumeWeight5000 = lengthCm * widthCm * heightCm / 5000;
+  const detectedTier = detectSizeTier(lengthCm, widthCm, heightCm, actualWeight);
 
-  setVal("volumeWeight6000", volumeWeight6000);
-  setVal("volumeWeight5000", volumeWeight5000);
+  if ($("sizeTier")) {
+    $("sizeTier").value = detectedTier || "";
+  }
+  if ($("sizeTierText")) {
+    $("sizeTierText").value = sizeTierLabel(detectedTier);
+  }
 
-  const sellingPriceRmb = sellingPriceUsd * exchangeRate;
-  const profitCostDiff = fenxiaoPrice - purchaseCost;
-  const profitRate1 = purchaseCost ? (profitCostDiff / purchaseCost) * 100 : 0;
-  const profitSellDiff = sellingPriceRmb - fenxiaoPrice;
-  const profitRate2 = fenxiaoPrice ? (profitSellDiff / fenxiaoPrice) * 100 : 0;
+  const sellingPriceRmb = readOrCalc("sellingPriceRmb", sellingPriceUsd * exchangeRate);
+  const profitCostDiff = readOrCalc("profitCostDiff", fenxiaoPrice - purchaseCost);
+  const profitRate1 = readOrCalc("profitRate1", purchaseCost ? (profitCostDiff / purchaseCost) * 100 : 0);
+  const profitSellDiff = readOrCalc("profitSellDiff", sellingPriceRmb - fenxiaoPrice);
+  const profitRate2 = readOrCalc("profitRate2", fenxiaoPrice ? (profitSellDiff / fenxiaoPrice) * 100 : 0);
 
-  setVal("sellingPriceRmb", sellingPriceRmb);
-  setVal("profitCostDiff", profitCostDiff);
-  setVal("profitRate1", profitRate1);
-  setVal("profitSellDiff", profitSellDiff);
-  setVal("profitRate2", profitRate2);
+  const expressWeightQty = readOrCalc("expressWeightQty", Math.max(actualWeight, volumeWeight6000));
+  const airWeightQty = readOrCalc("airWeightQty", Math.max(actualWeight, volumeWeight6000));
+  const seaWeightQty = readOrCalc("seaWeightQty", Math.max(actualWeight, volumeWeight5000));
 
-  const expressWeightQty = Math.max(actualWeight, volumeWeight6000);
-  const airWeightQty = Math.max(actualWeight, volumeWeight6000);
-  const seaWeightQty = Math.max(actualWeight, volumeWeight5000);
+  const expressTotalPrice = readOrCalc("expressTotalPrice", expressWeightQty * expressUnitPrice * expressTax);
+  const airTotalPrice = readOrCalc("airTotalPrice", airWeightQty * airUnitPrice * airTax);
+  const seaTotalPrice = readOrCalc("seaTotalPrice", seaWeightQty * seaUnitPrice * seaTax);
 
-  setVal("expressWeightQty", expressWeightQty);
-  setVal("airWeightQty", airWeightQty);
-  setVal("seaWeightQty", seaWeightQty);
+  const commissionRmb = readOrCalc("commissionRmb", sellingPriceUsd * (commissionRate / 100) * exchangeRate);
+  const adCostRmb = readOrCalc("adCostRmb", sellingPriceUsd * (adRate / 100) * exchangeRate);
 
-  const expressTotalPrice = expressWeightQty * expressUnitPrice * expressTax;
-  const airTotalPrice = airWeightQty * airUnitPrice * airTax;
-  const seaTotalPrice = seaWeightQty * seaUnitPrice * seaTax;
+  const shippingWeightLb = getAmazonShippingWeightLb(
+    detectedTier,
+    lengthCm,
+    widthCm,
+    heightCm,
+    actualWeight
+  );
 
-  setVal("expressTotalPrice", expressTotalPrice);
-  setVal("airTotalPrice", airTotalPrice);
-  setVal("seaTotalPrice", seaTotalPrice);
+  const fbaFeeUsd = getFbaFeeUsd2026(
+    detectedTier,
+    shippingWeightLb,
+    sellingPriceUsd
+  );
 
-  const commissionRmb = sellingPriceUsd * (commissionRate / 100) * exchangeRate;
-  const adCostRmb = sellingPriceUsd * (adRate / 100) * exchangeRate;
-  const fbaFeeRmb = (warehouseUsd + deliveryUsd) * exchangeRate;
+  const fbaFeeRmb = readOrCalc("fbaFeeRmb", fbaFeeUsd * exchangeRate);
 
-  setVal("commissionRmb", commissionRmb);
-  setVal("adCostRmb", adCostRmb);
-  setVal("fbaFeeRmb", fbaFeeRmb);
+  const cubicFeet =
+    lengthCm > 0 && widthCm > 0 && heightCm > 0
+      ? (lengthCm * widthCm * heightCm) / 28316.8466
+      : 0;
 
-  const expressFee = expressTotalPrice + fbaFeeRmb + commissionRmb + returnCostRmb + adCostRmb;
-  const airFee = airTotalPrice + fbaFeeRmb + commissionRmb + returnCostRmb + adCostRmb;
-  const seaFee = seaTotalPrice + fbaFeeRmb + commissionRmb + returnCostRmb + adCostRmb;
+  const warehouseUsd = readOrCalc("warehouseUsd", cubicFeet * 0.78);
+  const deliveryUsd = readOrCalc("deliveryUsd", 0);
+  const returnCostRmb = readOrCalc("returnCostRmb", Math.min(commissionRmb * 0.2, 5 * exchangeRate));
 
-  setVal("expressFee", expressFee);
-  setVal("airFee", airFee);
-  setVal("seaFee", seaFee);
+  const expressFee = readOrCalc("expressFee", expressTotalPrice + fbaFeeRmb + commissionRmb + returnCostRmb + adCostRmb);
+  const airFee = readOrCalc("airFee", airTotalPrice + fbaFeeRmb + commissionRmb + returnCostRmb + adCostRmb);
+  const seaFee = readOrCalc("seaFee", seaTotalPrice + fbaFeeRmb + commissionRmb + returnCostRmb + adCostRmb);
 
-  const expressProfit = sellingPriceRmb - purchaseCost - expressFee;
-  const airProfit = sellingPriceRmb - purchaseCost - airFee;
-  const seaProfit = sellingPriceRmb - purchaseCost - seaFee;
+  const expressProfit = readOrCalc("expressProfit", sellingPriceRmb - purchaseCost - expressFee);
+  const airProfit = readOrCalc("airProfit", sellingPriceRmb - purchaseCost - airFee);
+  const seaProfit = readOrCalc("seaProfit", sellingPriceRmb - purchaseCost - seaFee);
 
-  setVal("expressProfit", expressProfit);
-  setVal("airProfit", airProfit);
-  setVal("seaProfit", seaProfit);
-
-  const expressProfitRate = sellingPriceRmb ? (expressProfit / sellingPriceRmb) * 100 : 0;
-  const airProfitRate = sellingPriceRmb ? (airProfit / sellingPriceRmb) * 100 : 0;
-  const seaProfitRate = sellingPriceRmb ? (seaProfit / sellingPriceRmb) * 100 : 0;
-
-  setVal("expressProfitRate", expressProfitRate);
-  setVal("airProfitRate", airProfitRate);
-  setVal("seaProfitRate", seaProfitRate);
+  readOrCalc("expressProfitRate", sellingPriceRmb ? (expressProfit / sellingPriceRmb) * 100 : 0);
+  readOrCalc("airProfitRate", sellingPriceRmb ? (airProfit / sellingPriceRmb) * 100 : 0);
+  readOrCalc("seaProfitRate", sellingPriceRmb ? (seaProfit / sellingPriceRmb) * 100 : 0);
 }
 
 function fetchRate() {
@@ -1466,12 +1686,12 @@ async function autoFillCompetitors() {
     const data = await res.json();
 
     if (!res.ok) {
-      throw new Error(data.error || "竞品生成失败");
+      throw new Error(data.detail || data.error || "竞品生成失败");
     }
 
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 5; i++) {
       const item = data[i] || {};
-      if ($("competitor" + (i + 1) + "Name")) $("competitor" + (i + 1) + "Name").value = item.cn || "";
+      if ($("competitor" + (i + 1) + "Name")) $("competitor" + (i + 1) + "Name").value = item.nameCn || item.cn || "";
       if ($("competitor" + (i + 1) + "Link")) $("competitor" + (i + 1) + "Link").value = item.link || "";
       if ($("competitor" + (i + 1) + "Image")) $("competitor" + (i + 1) + "Image").value = item.image || "";
       if ($("competitor" + (i + 1) + "Price")) $("competitor" + (i + 1) + "Price").value = item.price || "";
@@ -1623,10 +1843,53 @@ window.addEventListener("DOMContentLoaded", function () {
     "expressTax",
     "airTax",
     "seaTax",
-    "warehouseUsd",
-    "deliveryUsd",
-    "returnCostRmb"
+    [
+  "exchangeRate",
+  "purchaseCost",
+  "commissionRate",
+  "fenxiaoPrice",
+  "adRate",
+  "sellingPriceUsd",
+  "lengthCm",
+  "widthCm",
+  "heightCm",
+  "actualWeight",
+  "expressUnitPrice",
+  "airUnitPrice",
+  "seaUnitPrice",
+  "expressTax",
+  "airTax",
+  "seaTax"
   ].forEach(bindCalc);
+
+  [
+  "productCode",
+  "volumeWeight6000",
+  "volumeWeight5000",
+  "sellingPriceRmb",
+  "profitCostDiff",
+  "profitRate1",
+  "profitSellDiff",
+  "profitRate2",
+  "expressWeightQty",
+  "airWeightQty",
+  "seaWeightQty",
+  "expressTotalPrice",
+  "airTotalPrice",
+  "seaTotalPrice",
+  "commissionRmb",
+  "adCostRmb",
+  "fbaFeeRmb",
+  "expressFee",
+  "airFee",
+  "seaFee",
+  "expressProfit",
+  "airProfit",
+  "seaProfit",
+  "expressProfitRate",
+  "airProfitRate",
+  "seaProfitRate"
+].forEach(bindManualCalc);
 
   savePriceCache();
   calcAll();
@@ -1763,9 +2026,11 @@ app.post("/save", checkLogin, upload.single("photo"), (req, res) => {
   seaWeightQty, seaUnitPrice, seaTax, seaTotalPrice,
   fbaFeeRmb, commissionRmb, returnCostRmb, warehouseUsd, deliveryUsd, adCostRmb,
   competitor1Name, competitor1Link, competitor1Image, competitor1Price,
-  competitor2Name, competitor2Link, competitor2Image, competitor2Price,
-  competitor3Name, competitor3Link, competitor3Image, competitor3Price,
-  changedFields,
+competitor2Name, competitor2Link, competitor2Image, competitor2Price,
+competitor3Name, competitor3Link, competitor3Image, competitor3Price,
+competitor4Name, competitor4Link, competitor4Image, competitor4Price,
+competitor5Name, competitor5Link, competitor5Image, competitor5Price,
+changedFields,
   photoPath, ownerUserId, ownerUsername, lastEditedByUserId, lastEditedByUsername,
   createdAt, updatedAt
 ) VALUES (
@@ -1781,6 +2046,8 @@ app.post("/save", checkLogin, upload.single("photo"), (req, res) => {
   ?, ?, ?, ?,
   ?, ?, ?, ?,
   ?, ?, ?, ?, ?, ?,
+  ?, ?, ?, ?,
+  ?, ?, ?, ?,
   ?, ?, ?, ?,
   ?, ?, ?, ?,
   ?, ?, ?, ?,
@@ -1841,19 +2108,27 @@ app.post("/save", checkLogin, upload.single("photo"), (req, res) => {
   d.warehouseUsd || "",
   d.deliveryUsd || "",
   d.adCostRmb || "",
-  d.competitor1Name || "",
-  d.competitor1Link || "",
-  d.competitor1Image || "",
-  d.competitor1Price || "",
-  d.competitor2Name || "",
-  d.competitor2Link || "",
-  d.competitor2Image || "",
-  d.competitor2Price || "",
-  d.competitor3Name || "",
-  d.competitor3Link || "",
-  d.competitor3Image || "",
-  d.competitor3Price || "",
-  "[]",
+ d.competitor1Name || "",
+d.competitor1Link || "",
+d.competitor1Image || "",
+d.competitor1Price || "",
+d.competitor2Name || "",
+d.competitor2Link || "",
+d.competitor2Image || "",
+d.competitor2Price || "",
+d.competitor3Name || "",
+d.competitor3Link || "",
+d.competitor3Image || "",
+d.competitor3Price || "",
+d.competitor4Name || "",
+d.competitor4Link || "",
+d.competitor4Image || "",
+d.competitor4Price || "",
+d.competitor5Name || "",
+d.competitor5Link || "",
+d.competitor5Image || "",
+d.competitor5Price || "",
+"[]",
   photoPath,
   u.id,
   u.username,
@@ -2107,11 +2382,50 @@ function num(id) {
 function setVal(id, val, digits = 3) {
   const el = document.getElementById(id);
   if (!el) return;
+
+  if (document.activeElement === el) return;
+  if (el.dataset.manual === "1") return;
+
   if (val === "" || val === null || val === undefined || isNaN(val)) {
     el.value = "";
   } else {
     el.value = Number(val).toFixed(digits);
   }
+}
+
+function isManual(id) {
+  const el = document.getElementById(id);
+  return !!(el && el.dataset.manual === "1" && String(el.value || "").trim() !== "");
+}
+
+function readOrCalc(id, calcValue, digits = 3) {
+  if (isManual(id)) {
+    return num(id);
+  }
+  setVal(id, calcValue, digits);
+  return calcValue;
+}
+
+function bindManualCalc(id) {
+  const el = $(id);
+  if (!el) return;
+
+  function markManualAndRecalc() {
+    this.dataset.manual = String(this.value || "").trim() === "" ? "0" : "1";
+    calcAll();
+  }
+
+  el.addEventListener("input", markManualAndRecalc);
+  el.addEventListener("change", markManualAndRecalc);
+
+  el.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && this.tagName !== "TEXTAREA") {
+      e.preventDefault();
+      this.dataset.manual = String(this.value || "").trim() === "" ? "0" : "1";
+      this.blur();
+      calcAll();
+    }
+  });
 }
 
 function calcAll() {
@@ -2421,6 +2735,8 @@ for(let k in d){
     competitor1Name = ?, competitor1Link = ?, competitor1Image = ?, competitor1Price = ?,
     competitor2Name = ?, competitor2Link = ?, competitor2Image = ?, competitor2Price = ?,
     competitor3Name = ?, competitor3Link = ?, competitor3Image = ?, competitor3Price = ?,
+    competitor4Name = ?, competitor4Link = ?, competitor4Image = ?, competitor4Price = ?,
+    competitor5Name = ?, competitor5Link = ?, competitor5Image = ?, competitor5Price = ?,
     changedFields = ?,
     photoPath = ?, lastEditedByUserId = ?, lastEditedByUsername = ?, updatedAt = datetime('now','localtime')
   WHERE id = ?
@@ -2489,6 +2805,14 @@ for(let k in d){
   d.competitor3Link || "",
   d.competitor3Image || "",
   d.competitor3Price || "",
+  d.competitor4Name || "",
+  d.competitor4Link || "",
+  d.competitor4Image || "",
+  d.competitor4Price || "",
+  d.competitor5Name || "",
+  d.competitor5Link || "",
+  d.competitor5Image || "",
+  d.competitor5Price || "",
   JSON.stringify(changedFields || []),
   newPhotoPath,
   user.id,
@@ -2995,6 +3319,38 @@ async function translateToEnglish(text) {
   }
 }
 
+async function translateToChinese(text) {
+  const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
+  if (!apiKey) return text;
+
+  try {
+    const url = "https://translation.googleapis.com/language/translate/v2";
+
+    const resp = await axios.post(url, null, {
+      params: {
+        key: apiKey,
+        q: text,
+        target: "zh-CN",
+        format: "text"
+      }
+    });
+
+    const translated =
+      resp.data &&
+      resp.data.data &&
+      resp.data.data.translations &&
+      resp.data.data.translations[0] &&
+      resp.data.data.translations[0].translatedText;
+
+    return translated || text;
+  } catch (e) {
+    console.error("Google 中文翻译失败：", e.response?.data || e.message);
+    return text;
+  }
+}
+
+
+
 app.post("/api/competitors", async (req, res) => {
   const rawName = String(req.body.name || "").trim();
   if (!rawName) {
@@ -3005,7 +3361,6 @@ app.post("/api/competitors", async (req, res) => {
     const englishKeyword = await translateToEnglish(rawName);
     console.log("原始产品名：", rawName);
     console.log("翻译后关键词：", englishKeyword);
-    console.log("搜索关键词：", englishKeyword);
 
     const serpKey = process.env.SERPAPI_KEY;
     console.log("SERPAPI_KEY存在吗：", !!serpKey);
@@ -3013,54 +3368,56 @@ app.post("/api/competitors", async (req, res) => {
       return res.status(500).json({ error: "缺少 SERPAPI_KEY" });
     }
 
-    console.log("开始请求 SerpApi...");
     const serpResp = await axios.get("https://serpapi.com/search", {
-  params: {
-    engine: "amazon",
-    amazon_domain: "amazon.com",
-    k: englishKeyword,
-    api_key: serpKey
-  }
-});
+      params: {
+        engine: "amazon",
+        amazon_domain: "amazon.com",
+        k: englishKeyword,
+        api_key: serpKey
+      }
+    });
 
     const organic = Array.isArray(serpResp.data.organic_results)
       ? serpResp.data.organic_results
       : [];
 
-    const top3 = organic.slice(0, 3).map((item, idx) => {
-      const title = item.title || (rawName + " 竞品" + (idx + 1));
-      const link = item.link || "";
-      const image = item.thumbnail || item.image || "";
-      const price =
-        item.price && typeof item.price === "object"
-          ? (item.price.value || item.price.raw || "")
-          : (item.price || "");
+    const top5 = await Promise.all(
+      organic.slice(0, 5).map(async (item, idx) => {
+        const title = item.title || (rawName + " 竞品" + (idx + 1));
+        const titleCn = await translateToChinese(title);
+        const link = item.link || "";
+        const image = item.thumbnail || item.image || "";
+        const price =
+          item.price && typeof item.price === "object"
+            ? (item.price.value || item.price.raw || "")
+            : (item.price || "");
 
-      return {
-        cn: title,
-        link,
-        image,
-        price: String(price || "")
-      };
-    });
+        return {
+          nameCn: titleCn || title,
+          link,
+          image,
+          price: String(price || "")
+        };
+      })
+    );
 
-    while (top3.length < 3) {
-      top3.push({
-        cn: rawName + " 竞品" + (top3.length + 1),
+    while (top5.length < 5) {
+      top5.push({
+        nameCn: rawName + " 竞品" + (top5.length + 1),
         link: "",
         image: "",
         price: ""
       });
     }
 
-    res.json(top3);
+    res.json(top5);
   } catch (e) {
-  console.error("竞品生成失败：", e.response?.data || e.message);
-  res.status(500).json({
-    error: "竞品生成失败",
-    detail: e.response?.data || e.message
-  });
-}
+    console.error("竞品生成失败：", e.response?.data || e.message);
+    res.status(500).json({
+      error: e.response?.data?.error || e.response?.data?.message || e.message || "竞品生成失败",
+      detail: JSON.stringify(e.response?.data || e.message || "")
+    });
+  }
 });
 
 cron.schedule("0 18 * * 6", () => {

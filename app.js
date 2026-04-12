@@ -89,6 +89,20 @@ function formatTime(value) {
   });
 }
 
+function serverSizeTierLabel(code) {
+  const map = {
+    small_standard: "小号标准尺寸",
+    large_standard: "大号标准尺寸",
+    small_bulky: "小号大件",
+    large_bulky: "大号大件",
+    oversize_0_50: "超大件 0-50磅",
+    oversize_50_70: "超大件 50-70磅",
+    oversize_70_150: "超大件 70-150磅",
+    oversize_150_plus: "超大件 150磅以上"
+  };
+  return map[code] || "";
+}
+
 function deletePhotoFile(fileName) {
   if (!fileName) return;
   const filePath = path.join(UPLOAD_DIR, fileName);
@@ -273,6 +287,7 @@ db.serialize(() => {
       fbaFeeRmb TEXT,
       commissionRmb TEXT,
       returnCostRmb TEXT,
+      returnRate TEXT,
       warehouseUsd TEXT,
       deliveryUsd TEXT,
       adCostRmb TEXT,
@@ -290,6 +305,7 @@ db.serialize(() => {
   `);
 
   db.run(`ALTER TABLE products ADD COLUMN approveStatus TEXT DEFAULT 'pending'`, ()=>{});
+  db.run(`ALTER TABLE products ADD COLUMN returnRate TEXT`, ()=>{});
 db.run(`ALTER TABLE products ADD COLUMN approvedBy TEXT`, ()=>{});
 db.run(`ALTER TABLE products ADD COLUMN approvedAt TEXT`, ()=>{});
 db.run(`ALTER TABLE products ADD COLUMN rejectReason TEXT`, ()=>{});
@@ -982,6 +998,22 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
       border-bottom:1px solid #d0d0d0;
       background:#fff;
     }
+      .fee-layout .label{
+  width:auto;
+  min-width:140px;
+}
+
+.fee-layout td{
+  height:42px;
+}
+
+.fee-layout .input{
+  height:34px;
+}
+
+.fee-layout td:empty{
+  background:#efefef;
+}
   </style>
 </head>
 <body>
@@ -1047,21 +1079,21 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
           </tr>
           <tr>
             <td class="label">分销减采购成本利润*</td>
-            <td><input class="input readonly-red" type="number" step="0.001" name="profitCostDiff" id="profitCostDiff" value="${esc(row.profitCostDiff || "")}" /></td>
+            <td><input class="input readonly-red" type="number" step="0.001" name="profitCostDiff" id="profitCostDiff" value="${esc(row.profitCostDiff || "")}" readonly /></td>
             <td class="label">利润率1(%)*</td>
-            <td><input class="input readonly-red" type="number" step="0.001" name="profitRate1" id="profitRate1" value="${esc(row.profitRate1 || "")}" /></td>
+            <td><input class="input readonly-red" type="number" step="0.001" name="profitRate1" id="profitRate1" value="${esc(row.profitRate1 || "")}" readonly /></td>
           </tr>
           <tr>
             <td class="label">销售价(USD)*</td>
             <td><input class="input calc" type="number" step="0.001" name="sellingPriceUsd" id="sellingPriceUsd" value="${esc(row.sellingPriceUsd || "")}" /></td>
             <td class="label">销售价(RMB)*</td>
-            <td><input class="input readonly-red" type="number" step="0.001" name="sellingPriceRmb" id="sellingPriceRmb" value="${esc(row.sellingPriceRmb || "")}" /></td>
+            <td><input class="input readonly-red" type="number" step="0.001" name="sellingPriceRmb" id="sellingPriceRmb" value="${esc(row.sellingPriceRmb || "")}" readonly /></td>
           </tr>
           <tr>
             <td class="label">销售价-分销价利润*</td>
-            <td><input class="input readonly-red" type="number" step="0.001" name="profitSellDiff" id="profitSellDiff" value="${esc(row.profitSellDiff || "")}" /></td>
+            <td><input class="input readonly-red" type="number" step="0.001" name="profitSellDiff" id="profitSellDiff" value="${esc(row.profitSellDiff || "")}" readonly /></td>
             <td class="label">利润率2(%)*</td>
-            <td><input class="input readonly-red" type="number" step="0.001" name="profitRate2" id="profitRate2" value="${esc(row.profitRate2 || "")}" /></td>
+            <td><input class="input readonly-red" type="number" step="0.001" name="profitRate2" id="profitRate2" value="${esc(row.profitRate2 || "")}" readonly /></td>
           </tr>
           <tr>
             <td class="label">备注</td>
@@ -1117,7 +1149,7 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
   <td class="label">尺寸分段*</td>
   <td>
     <input type="hidden" name="sizeTier" id="sizeTier" value="${esc(row.sizeTier || "")}" />
-    <input class="input readonly-gray" type="text" id="sizeTierText" value="${esc(row.sizeTier || "")}" readonly />
+    <input class="input readonly-gray" type="text" id="sizeTierText" value="${esc(serverSizeTierLabel(row.sizeTier || ""))}" readonly />
   </td>
   <td class="money-tag">自动识别</td>
   <td colspan="4"></td>
@@ -1146,30 +1178,27 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
             <th></th><th></th><th></th><th></th><th></th><th></th><th></th>
           </tr>
           <tr>
-            <td class="label">快递:</td>
-            <td><input class="input readonly-red" type="number" step="0.001" name="expressFee" id="expressFee" value="${esc(row.expressFee || "")}" /></td>
-            <td class="money-tag">(RMB) 利润</td>
-            <td><input class="input readonly-red" type="number" step="0.001" name="expressProfit" id="expressProfit" value="${esc(row.expressProfit || "")}" /></td>
-            <td class="money-tag">(RMB)</td>
-            <td class="label">利润率(%)*</td>
-            <td><input class="input readonly-red" type="number" step="0.001" name="expressProfitRate" id="expressProfitRate" value="${esc(row.expressProfitRate || "")}" /></td>
+          <td class="label">快递费(RMB)</td>
+          <td><input class="input readonly-red" type="number" step="0.001" name="expressFee" id="expressFee" value="${esc(row.expressFee || "")}" /></td>
+          <td class="money-tag" style="text-align:right;">利润(RMB)</td>
+          <td><input class="input readonly-red" type="number" step="0.001" name="expressProfit" id="expressProfit" value="${esc(row.expressProfit || "")}" /></td>
+          <td class="label" colspan="2">利润率(%)*</td>
+          <td><input class="input readonly-red" type="number" step="0.001" name="expressProfitRate" id="expressProfitRate" value="${esc(row.expressProfitRate || "")}" /></td>
           </tr>
           <tr>
-            <td class="label">空运:</td>
-            <td><input class="input readonly-red" type="number" step="0.001" name="airFee" id="airFee" value="${esc(row.airFee || "")}" /></td>
-            <td class="money-tag">(RMB) 利润</td>
-            <td><input class="input readonly-red" type="number" step="0.001" name="airProfit" id="airProfit" value="${esc(row.airProfit || "")}" /></td>
-            <td class="money-tag">(RMB)</td>
-            <td class="label">利润率(%)*</td>
-            <td><input class="input readonly-red" type="number" step="0.001" name="airProfitRate" id="airProfitRate" value="${esc(row.airProfitRate || "")}" /></td>
+          <td class="label">空运费(RMB)</td>
+          <td><input class="input readonly-red" type="number" step="0.001" name="airFee" id="airFee" value="${esc(row.airFee || "")}" /></td>
+          <td class="money-tag" style="text-align:right;">利润(RMB)</td>
+          <td><input class="input readonly-red" type="number" step="0.001" name="airProfit" id="airProfit" value="${esc(row.airProfit || "")}" /></td>
+          <td class="label" colspan="2">利润率(%)*</td>
+          <td><input class="input readonly-red" type="number" step="0.001" name="airProfitRate" id="airProfitRate" value="${esc(row.airProfitRate || "")}" /></td>
           </tr>
           <tr>
-            <td class="label">海运:</td>
+            <td class="label">海运费(RMB)</td>
             <td><input class="input readonly-red" type="number" step="0.001" name="seaFee" id="seaFee" value="${esc(row.seaFee || "")}" /></td>
-            <td class="money-tag">(RMB) 利润</td>
+            <td class="money-tag" style="text-align:right;">利润(RMB)</td>
             <td><input class="input readonly-red" type="number" step="0.001" name="seaProfit" id="seaProfit" value="${esc(row.seaProfit || "")}" /></td>
-            <td class="money-tag">(RMB)</td>
-            <td class="label">利润率(%)*</td>
+            <td class="label" colspan="2">利润率(%)*</td>
             <td><input class="input readonly-red" type="number" step="0.001" name="seaProfitRate" id="seaProfitRate" value="${esc(row.seaProfitRate || "")}" /></td>
           </tr>
         </table>
@@ -1196,7 +1225,7 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
             <td><input class="input readonly-gray" type="number" step="0.001" name="expressWeightQty" id="expressWeightQty" value="${esc(row.expressWeightQty || "")}" readonly /></td>
             <td><input class="input calc" type="number" step="0.001" name="expressUnitPrice" id="expressUnitPrice" value="${esc(row.expressUnitPrice || "")}" /></td>
             <td><input class="input calc" type="number" step="0.001" name="expressTax" id="expressTax" value="${esc(row.expressTax || "")}" /></td>
-            <td><input class="input readonly-gray" type="number" step="0.001" name="expressTotalPrice" id="expressTotalPrice" value="${esc(row.expressTotalPrice || "")}" /></td>
+            <td><input class="input readonly-gray" type="number" step="0.001" name="expressTotalPrice" id="expressTotalPrice" value="${esc(row.expressTotalPrice || "")}" readonly /></td>
             <td></td>
           </tr>
           <tr>
@@ -1204,7 +1233,7 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
             <td><input class="input readonly-gray" type="number" step="0.001" name="airWeightQty" id="airWeightQty" value="${esc(row.airWeightQty || "")}" readonly /></td>
             <td><input class="input calc" type="number" step="0.001" name="airUnitPrice" id="airUnitPrice" value="${esc(row.airUnitPrice || "")}" /></td>
             <td><input class="input calc" type="number" step="0.001" name="airTax" id="airTax" value="${esc(row.airTax || "")}" /></td>
-            <td><input class="input readonly-gray" type="number" step="0.001" name="airTotalPrice" id="airTotalPrice" value="${esc(row.airTotalPrice || "")}" /></td>
+            <td><input class="input readonly-gray" type="number" step="0.001" name="airTotalPrice" id="airTotalPrice" value="${esc(row.airTotalPrice || "")}" readonly /></td>
             <td></td>
           </tr>
           <tr>
@@ -1212,7 +1241,7 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
             <td><input class="input readonly-gray" type="number" step="0.001" name="seaWeightQty" id="seaWeightQty" value="${esc(row.seaWeightQty || "")}" readonly /></td>
             <td><input class="input calc" type="number" step="0.001" name="seaUnitPrice" id="seaUnitPrice" value="${esc(row.seaUnitPrice || "")}" /></td>
             <td><input class="input calc" type="number" step="0.001" name="seaTax" id="seaTax" value="${esc(row.seaTax || "")}" /></td>
-            <td><input class="input readonly-gray" type="number" step="0.001" name="seaTotalPrice" id="seaTotalPrice" value="${esc(row.seaTotalPrice || "")}" /></td>
+            <td><input class="input readonly-gray" type="number" step="0.001" name="seaTotalPrice" id="seaTotalPrice" value="${esc(row.seaTotalPrice || "")}" readonly /></td>
             <td></td>
           </tr>
         </table>
@@ -1220,34 +1249,48 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
 
       <div class="white-gap"></div>
 
-      <div class="section">
-        <table class="layout">
-          <colgroup>
-            <col style="width: 220px;">
-            <col style="width: 220px;">
-            <col style="width: 220px;">
-            <col style="width: 220px;">
-            <col style="width: 220px;">
-            <col style="width: 220px;">
-          </colgroup>
-                   <tr>
-            <td class="label">FBA费用(RMB)</td>
-            <td><input class="input readonly-gray" type="number" step="0.001" name="fbaFeeRmb" id="fbaFeeRmb" value="${esc(row.fbaFeeRmb || "")}" readonly /></td>
-            <td class="label">佣金(RMB)</td>
-            <td><input class="input readonly-gray" type="number" step="0.001" name="commissionRmb" id="commissionRmb" value="${esc(row.commissionRmb || "")}" readonly /></td>
-            <td class="label">退货成本(RMB)</td>
-            <td><input class="input calc" type="number" step="0.001" name="returnCostRmb" id="returnCostRmb" value="${esc(row.returnCostRmb || "")}" /></td>
-          </tr>
-          <tr>
-            <td class="label">仓租(USD)</td>
-            <td><input class="input calc" type="number" step="0.001" name="warehouseUsd" id="warehouseUsd" value="${esc(row.warehouseUsd || "")}" /></td>
-            <td class="label">配送+分拨(USD)</td>
-            <td><input class="input calc" type="number" step="0.001" name="deliveryUsd" id="deliveryUsd" value="${esc(row.deliveryUsd || "")}" /></td>
-            <td class="label">广告费(RMB)</td>
-            <td><input class="input readonly-gray" type="number" step="0.001" name="adCostRmb" id="adCostRmb" value="${esc(row.adCostRmb || "")}" readonly /></td>
-          </tr>
-        </table>
-      </div>
+<div class="section">
+  <table class="layout fee-layout">
+    <colgroup>
+      <col style="width: 12.5%;">
+      <col style="width: 12.5%;">
+      <col style="width: 12.5%;">
+      <col style="width: 12.5%;">
+      <col style="width: 12.5%;">
+      <col style="width: 12.5%;">
+      <col style="width: 12.5%;">
+      <col style="width: 12.5%;">
+    </colgroup>
+
+    <tr>
+      <td class="label">FBA费用(RMB)</td>
+      <td><input class="input calc-manual" type="number" step="0.001" name="fbaFeeRmb" id="fbaFeeRmb" value="${esc(row.fbaFeeRmb || "")}" /></td>
+
+      <td class="label">佣金(RMB)</td>
+      <td><input class="input readonly-gray" type="number" step="0.001" name="commissionRmb" id="commissionRmb" value="${esc(row.commissionRmb || "")}" readonly /></td>
+
+      <td class="label">退货成本(RMB)</td>
+      <td><input class="input readonly-gray" type="number" step="0.001" name="returnCostRmb" id="returnCostRmb" value="${esc(row.returnCostRmb || "")}" readonly /></td>
+
+      <td class="label">退货率(%)</td>
+      <td><input class="input calc" type="number" step="0.001" name="returnRate" id="returnRate" value="${esc(row.returnRate || "")}" /></td>
+    </tr>
+
+    <tr>
+      <td class="label">仓租(USD)</td>
+      <td><input class="input calc" type="number" step="0.001" name="warehouseUsd" id="warehouseUsd" value="${esc(row.warehouseUsd || "")}" /></td>
+
+      <td class="label">配送+分拨(USD)</td>
+      <td><input class="input calc" type="number" step="0.001" name="deliveryUsd" id="deliveryUsd" value="${esc(row.deliveryUsd || "")}" /></td>
+
+      <td class="label">广告费(RMB)</td>
+      <td><input class="input calc-manual" type="number" step="0.001" name="adCostRmb" id="adCostRmb" value="${esc(row.adCostRmb || "")}" /></td>
+
+      <td class="label"></td>
+      <td></td>
+    </tr>
+  <table class="layout fee-layout">
+</div>
 
       <!-- 竞品区 START -->
 <div class="section">
@@ -1335,12 +1378,29 @@ function num(id) {
 function setVal(id, val, digits = 3) {
   const el = $(id);
   if (!el) return;
+
+  if (document.activeElement === el) return;
+  if (el.dataset.manual === "1") return;
+
   const n = Number(val);
   if (val === "" || val === null || val === undefined || !Number.isFinite(n)) {
     el.value = "";
     return;
   }
   el.value = n.toFixed(digits);
+}
+
+function isManual(id) {
+  const el = $(id);
+  return !!(el && el.dataset.manual === "1" && String(el.value || "").trim() !== "");
+}
+
+function readOrCalc(id, calcValue, digits = 3) {
+  if (isManual(id)) {
+    return num(id);
+  }
+  setVal(id, calcValue, digits);
+  return calcValue;
 }
 
 function cmToIn(cm) {
@@ -1597,45 +1657,63 @@ function calcAll() {
   const airTotalPrice = readOrCalc("airTotalPrice", airWeightQty * airUnitPrice * airTax);
   const seaTotalPrice = readOrCalc("seaTotalPrice", seaWeightQty * seaUnitPrice * seaTax);
 
-  const commissionRmb = readOrCalc("commissionRmb", sellingPriceUsd * (commissionRate / 100) * exchangeRate);
-  const adCostRmb = readOrCalc("adCostRmb", sellingPriceUsd * (adRate / 100) * exchangeRate);
+const commissionRmb = readOrCalc("commissionRmb", sellingPriceRmb * commissionRate / 100);
+const adCostRmb = sellingPriceRmb * adRate / 100;
+setVal("adCostRmb", adCostRmb);
 
-  const shippingWeightLb = getAmazonShippingWeightLb(
-    detectedTier,
-    lengthCm,
-    widthCm,
-    heightCm,
-    actualWeight
-  );
+const shippingWeightLb = getAmazonShippingWeightLb(
+  detectedTier,
+  lengthCm,
+  widthCm,
+  heightCm,
+  actualWeight
+);
 
-  const fbaFeeUsd = getFbaFeeUsd2026(
-    detectedTier,
-    shippingWeightLb,
-    sellingPriceUsd
-  );
+const fbaFeeUsd = getFbaFeeUsd2026(
+  detectedTier,
+  shippingWeightLb,
+  sellingPriceUsd
+);
 
-  const fbaFeeRmb = readOrCalc("fbaFeeRmb", fbaFeeUsd * exchangeRate);
+const fbaFeeRmb = readOrCalc("fbaFeeRmb", fbaFeeUsd * exchangeRate);
 
-  const cubicFeet =
-    lengthCm > 0 && widthCm > 0 && heightCm > 0
-      ? (lengthCm * widthCm * heightCm) / 28316.8466
-      : 0;
+const cubicFeet =
+  lengthCm > 0 && widthCm > 0 && heightCm > 0
+    ? (lengthCm * widthCm * heightCm) / 28316.8466
+    : 0;
 
-  const warehouseUsd = readOrCalc("warehouseUsd", cubicFeet * 0.78);
-  const deliveryUsd = readOrCalc("deliveryUsd", 0);
-  const returnCostRmb = readOrCalc("returnCostRmb", Math.min(commissionRmb * 0.2, 5 * exchangeRate));
+const warehouseUsd = readOrCalc("warehouseUsd", cubicFeet * 0.78);
+const deliveryUsd = num("deliveryUsd");
+const returnCostRmb = num("returnCostRmb");
 
-  const expressFee = readOrCalc("expressFee", expressTotalPrice + fbaFeeRmb + commissionRmb + returnCostRmb + adCostRmb);
-  const airFee = readOrCalc("airFee", airTotalPrice + fbaFeeRmb + commissionRmb + returnCostRmb + adCostRmb);
-  const seaFee = readOrCalc("seaFee", seaTotalPrice + fbaFeeRmb + commissionRmb + returnCostRmb + adCostRmb);
+// 运输方式右边显示下面的价格(RMB)
+const expressFee = readOrCalc("expressFee", expressTotalPrice);
+const airFee = readOrCalc("airFee", airTotalPrice);
+const seaFee = readOrCalc("seaFee", seaTotalPrice);
 
-  const expressProfit = readOrCalc("expressProfit", sellingPriceRmb - purchaseCost - expressFee);
-  const airProfit = readOrCalc("airProfit", sellingPriceRmb - purchaseCost - airFee);
-  const seaProfit = readOrCalc("seaProfit", sellingPriceRmb - purchaseCost - seaFee);
+// 利润 =（销售价-分销价利润）- 对应运输价格 - FBA费用 - 佣金 - 退货成本 - 仓租 - 配送+分拨 - 广告费
+const warehouseRmb = warehouseUsd * exchangeRate;
+const deliveryRmb = deliveryUsd * exchangeRate;
+const profitBase = sellingPriceRmb;
 
-  readOrCalc("expressProfitRate", sellingPriceRmb ? (expressProfit / sellingPriceRmb) * 100 : 0);
-  readOrCalc("airProfitRate", sellingPriceRmb ? (airProfit / sellingPriceRmb) * 100 : 0);
-  readOrCalc("seaProfitRate", sellingPriceRmb ? (seaProfit / sellingPriceRmb) * 100 : 0);
+const expressProfit = readOrCalc(
+  "expressProfit",
+  profitBase - expressTotalPrice - fbaFeeRmb - commissionRmb - returnCostRmb - warehouseRmb - deliveryRmb - adCostRmb
+);
+
+const airProfit = readOrCalc(
+  "airProfit",
+  profitBase - airTotalPrice - fbaFeeRmb - commissionRmb - returnCostRmb - warehouseRmb - deliveryRmb - adCostRmb
+);
+
+const seaProfit = readOrCalc(
+  "seaProfit",
+  profitBase - seaTotalPrice - fbaFeeRmb - commissionRmb - returnCostRmb - warehouseRmb - deliveryRmb - adCostRmb
+);
+
+readOrCalc("expressProfitRate", sellingPriceRmb ? (expressProfit / sellingPriceRmb) * 100 : 0);
+readOrCalc("airProfitRate", sellingPriceRmb ? (airProfit / sellingPriceRmb) * 100 : 0);
+readOrCalc("seaProfitRate", sellingPriceRmb ? (seaProfit / sellingPriceRmb) * 100 : 0);
 }
 
 function fetchRate() {
@@ -1652,7 +1730,7 @@ function fetchRate() {
         alert("汇率获取失败");
         return;
       }
-      rateInput.value = (rate * 0.9).toFixed(4);
+      rateInput.value = rate.toFixed(4);
       calcAll();
     })
     .catch(function (err) {
@@ -1712,6 +1790,28 @@ function bindCalc(id) {
   if (!el) return;
   el.addEventListener("input", calcAll);
   el.addEventListener("change", calcAll);
+}
+
+function bindManualCalc(id) {
+  const el = $(id);
+  if (!el) return;
+
+  function markManualAndRecalc() {
+    this.dataset.manual = String(this.value || "").trim() === "" ? "0" : "1";
+    calcAll();
+  }
+
+  el.addEventListener("input", markManualAndRecalc);
+  el.addEventListener("change", markManualAndRecalc);
+
+  el.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && this.tagName !== "TEXTAREA") {
+      e.preventDefault();
+      this.dataset.manual = String(this.value || "").trim() === "" ? "0" : "1";
+      this.blur();
+      calcAll();
+    }
+  });
 }
 
 function initPhotoPreview() {
@@ -1778,9 +1878,6 @@ function initProductCode() {
 
 function initPriceCache() {
   try {
-    if ($("expressUnitPrice") && !$("expressUnitPrice").value) {
-      $("expressUnitPrice").value = localStorage.getItem("expressUnitPrice") || "";
-    }
     if ($("airUnitPrice") && !$("airUnitPrice").value) {
       $("airUnitPrice").value = localStorage.getItem("airUnitPrice") || "";
     }
@@ -1794,7 +1891,7 @@ function initPriceCache() {
 
 function savePriceCache() {
   try {
-    ["expressUnitPrice", "airUnitPrice", "seaUnitPrice"].forEach(function (id) {
+    ["airUnitPrice", "seaUnitPrice"].forEach(function (id) {
       const el = $(id);
       if (!el) return;
       el.addEventListener("change", function () {
@@ -1826,28 +1923,12 @@ window.addEventListener("DOMContentLoaded", function () {
   if ($("airTax") && !$("airTax").value) $("airTax").value = "1";
   if ($("seaTax") && !$("seaTax").value) $("seaTax").value = "1";
 
-  [
-    "exchangeRate",
-    "purchaseCost",
-    "commissionRate",
-    "fenxiaoPrice",
-    "adRate",
-    "sellingPriceUsd",
-    "lengthCm",
-    "widthCm",
-    "heightCm",
-    "actualWeight",
-    "expressUnitPrice",
-    "airUnitPrice",
-    "seaUnitPrice",
-    "expressTax",
-    "airTax",
-    "seaTax",
-    [
+[
   "exchangeRate",
   "purchaseCost",
   "commissionRate",
   "fenxiaoPrice",
+  "adRate",
   "adRate",
   "sellingPriceUsd",
   "lengthCm",
@@ -1859,36 +1940,14 @@ window.addEventListener("DOMContentLoaded", function () {
   "seaUnitPrice",
   "expressTax",
   "airTax",
-  "seaTax"
-  ].forEach(bindCalc);
+  "seaTax",
+  "warehouseUsd",
+  "deliveryUsd",
+  "returnRate"
+].forEach(bindCalc);
 
-  [
-  "productCode",
-  "volumeWeight6000",
-  "volumeWeight5000",
-  "sellingPriceRmb",
-  "profitCostDiff",
-  "profitRate1",
-  "profitSellDiff",
-  "profitRate2",
-  "expressWeightQty",
-  "airWeightQty",
-  "seaWeightQty",
-  "expressTotalPrice",
-  "airTotalPrice",
-  "seaTotalPrice",
-  "commissionRmb",
-  "adCostRmb",
-  "fbaFeeRmb",
-  "expressFee",
-  "airFee",
-  "seaFee",
-  "expressProfit",
-  "airProfit",
-  "seaProfit",
-  "expressProfitRate",
-  "airProfitRate",
-  "seaProfitRate"
+[
+  "fbaFeeRmb"
 ].forEach(bindManualCalc);
 
   savePriceCache();
@@ -2024,7 +2083,7 @@ app.post("/save", checkLogin, upload.single("photo"), (req, res) => {
   expressWeightQty, expressUnitPrice, expressTax, expressTotalPrice,
   airWeightQty, airUnitPrice, airTax, airTotalPrice,
   seaWeightQty, seaUnitPrice, seaTax, seaTotalPrice,
-  fbaFeeRmb, commissionRmb, returnCostRmb, warehouseUsd, deliveryUsd, adCostRmb,
+  fbaFeeRmb, commissionRmb, returnCostRmb, returnRate, warehouseUsd, deliveryUsd, adCostRmb,
   competitor1Name, competitor1Link, competitor1Image, competitor1Price,
 competitor2Name, competitor2Link, competitor2Image, competitor2Price,
 competitor3Name, competitor3Link, competitor3Image, competitor3Price,
@@ -2105,6 +2164,7 @@ changedFields,
   d.fbaFeeRmb || "",
   d.commissionRmb || "",
   d.returnCostRmb || "",
+  d.returnRate || "",
   d.warehouseUsd || "",
   d.deliveryUsd || "",
   d.adCostRmb || "",
@@ -2483,60 +2543,82 @@ setVal("expressTotalPrice", expressTotalPrice);
 setVal("airTotalPrice", airTotalPrice);
 setVal("seaTotalPrice", seaTotalPrice);
 
-const commissionRmb = sellingPriceUsd * (commissionRate / 100) * exchangeRate;
-const adCostRmb = sellingPriceUsd * (adRate / 100) * exchangeRate;
-
+const commissionRmb = sellingPriceRmb * (commissionRate / 100);
 setVal("commissionRmb", commissionRmb);
+
+// 广告费：优先用手动输入；如果没填，就按百分比自动算
+const adCostRmb = sellingPriceRmb * (adRate / 100);
 setVal("adCostRmb", adCostRmb);
 
-// ===== 新增：按 Amazon 月度仓储费自动算 =====
-// 立方英尺 = cm³ / 28316.8466
-const cubicFeet =
-  lengthCm > 0 && widthCm > 0 && heightCm > 0
-    ? (lengthCm * widthCm * heightCm) / 28316.8466
-    : 0;
+// 仓租 / 配送+分拨：页面输入
+const warehouseUsd = Number($("warehouseUsd")?.value || 0);
+const deliveryUsd = Number($("deliveryUsd")?.value || 0);
 
-// 1-9 月按 0.78 USD / cubic foot
-const warehouseUsd = cubicFeet * 0.78;
+// FBA费用：手动输入
+const fbaFeeRmb = Number($("fbaFeeRmb")?.value || 0);
 
-// 配送+分拣先默认 0
-const deliveryUsd = 0;
-
-// FBA费用(RMB)
-const fbaFeeRmb = (warehouseUsd + deliveryUsd) * exchangeRate;
-
-// 退货成本(RMB) = 佣金的20%，但最高 5 美元封顶
-const returnCostRmb = Math.min(commissionRmb * 0.2, 5 * exchangeRate);
-
-// 回填到页面
-setVal("warehouseUsd", warehouseUsd);
-setVal("deliveryUsd", deliveryUsd);
-setVal("fbaFeeRmb", fbaFeeRmb);
+// 退货成本 = 销售价RMB * 退货率
+const returnRate = Number($("returnRate")?.value || 0);
+const returnCostRmb = sellingPriceRmb * (returnRate / 100);
 setVal("returnCostRmb", returnCostRmb);
 
-  const expressFee = expressTotalPrice + fbaFeeRmb + commissionRmb + returnCostRmb + adCostRmb;
-  const airFee = airTotalPrice + fbaFeeRmb + commissionRmb + returnCostRmb + adCostRmb;
-  const seaFee = seaTotalPrice + fbaFeeRmb + commissionRmb + returnCostRmb + adCostRmb;
+// 运费(RMB)
+const expressFee = expressTotalPrice;
+const airFee = airTotalPrice;
+const seaFee = seaTotalPrice;
 
-  setVal("expressFee", expressFee);
-  setVal("airFee", airFee);
-  setVal("seaFee", seaFee);
+setVal("expressFee", expressFee);
+setVal("airFee", airFee);
+setVal("seaFee", seaFee);
 
-  const expressProfit = sellingPriceRmb - purchaseCost - expressFee;
-  const airProfit = sellingPriceRmb - purchaseCost - airFee;
-  const seaProfit = sellingPriceRmb - purchaseCost - seaFee;
+// USD 转 RMB
+const warehouseRmb = warehouseUsd * exchangeRate;
+const deliveryRmb = deliveryUsd * exchangeRate;
 
-  setVal("expressProfit", expressProfit);
-  setVal("airProfit", airProfit);
-  setVal("seaProfit", seaProfit);
+// 利润 = （销售价 - 分销价利润）- 运费 - FBA - 佣金 - 退货成本 - 仓租 - 配送+分拨 - 广告费
+const profitBase = profitSellDiff;
 
-  const expressProfitRate = sellingPriceRmb ? (expressProfit / sellingPriceRmb) * 100 : 0;
-  const airProfitRate = sellingPriceRmb ? (airProfit / sellingPriceRmb) * 100 : 0;
-  const seaProfitRate = sellingPriceRmb ? (seaProfit / sellingPriceRmb) * 100 : 0;
+const expressProfit =
+  profitBase
+  - expressFee
+  - fbaFeeRmb
+  - commissionRmb
+  - returnCostRmb
+  - warehouseRmb
+  - deliveryRmb
+  - adCostRmb;
 
-  setVal("expressProfitRate", expressProfitRate);
-  setVal("airProfitRate", airProfitRate);
-  setVal("seaProfitRate", seaProfitRate);
+const airProfit =
+  profitBase
+  - airFee
+  - fbaFeeRmb
+  - commissionRmb
+  - returnCostRmb
+  - warehouseRmb
+  - deliveryRmb
+  - adCostRmb;
+
+const seaProfit =
+  profitBase
+  - seaFee
+  - fbaFeeRmb
+  - commissionRmb
+  - returnCostRmb
+  - warehouseRmb
+  - deliveryRmb
+  - adCostRmb;
+
+setVal("expressProfit", expressProfit);
+setVal("airProfit", airProfit);
+setVal("seaProfit", seaProfit);
+
+const expressProfitRate = sellingPriceRmb ? (expressProfit / sellingPriceRmb) * 100 : 0;
+const airProfitRate = sellingPriceRmb ? (airProfit / sellingPriceRmb) * 100 : 0;
+const seaProfitRate = sellingPriceRmb ? (seaProfit / sellingPriceRmb) * 100 : 0;
+
+setVal("expressProfitRate", expressProfitRate);
+setVal("airProfitRate", airProfitRate);
+setVal("seaProfitRate", seaProfitRate);
 }
 </script>
         
@@ -2731,7 +2813,7 @@ for(let k in d){
     expressWeightQty = ?, expressUnitPrice = ?, expressTax = ?, expressTotalPrice = ?,
     airWeightQty = ?, airUnitPrice = ?, airTax = ?, airTotalPrice = ?,
     seaWeightQty = ?, seaUnitPrice = ?, seaTax = ?, seaTotalPrice = ?,
-    fbaFeeRmb = ?, commissionRmb = ?, returnCostRmb = ?, warehouseUsd = ?, deliveryUsd = ?, adCostRmb = ?,
+    fbaFeeRmb = ?, commissionRmb = ?, returnCostRmb = ?, returnRate = ?, warehouseUsd = ?, deliveryUsd = ?, adCostRmb = ?,
     competitor1Name = ?, competitor1Link = ?, competitor1Image = ?, competitor1Price = ?,
     competitor2Name = ?, competitor2Link = ?, competitor2Image = ?, competitor2Price = ?,
     competitor3Name = ?, competitor3Link = ?, competitor3Image = ?, competitor3Price = ?,
@@ -2790,6 +2872,7 @@ for(let k in d){
   d.fbaFeeRmb || "",
   d.commissionRmb || "",
   d.returnCostRmb || "",
+  d.returnRate || "",
   d.warehouseUsd || "",
   d.deliveryUsd || "",
   d.adCostRmb || "",
@@ -3290,7 +3373,7 @@ app.get("/users", checkLogin, checkAdmin, (_req, res) => {
 app.use(express.json());
 
 async function translateToEnglish(text) {
-  const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
+  const apiKey = "AIzaSyBgtvuBIWkyIdni-jQTZYfE0qdyLXKhUcs";
   if (!apiKey) return text;
 
   try {
@@ -3320,7 +3403,7 @@ async function translateToEnglish(text) {
 }
 
 async function translateToChinese(text) {
-  const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
+  const apiKey = "AIzaSyBgtvuBIWkyIdni-jQTZYfE0qdyLXKhUcs";
   if (!apiKey) return text;
 
   try {
@@ -3362,7 +3445,7 @@ app.post("/api/competitors", async (req, res) => {
     console.log("原始产品名：", rawName);
     console.log("翻译后关键词：", englishKeyword);
 
-    const serpKey = process.env.SERPAPI_KEY;
+    const serpKey = "551d2bdc10516bb1a5f14482cdeb0faf9b0929de0a97f46a6f9b3b917c81050d";
     console.log("SERPAPI_KEY存在吗：", !!serpKey);
     if (!serpKey) {
       return res.status(500).json({ error: "缺少 SERPAPI_KEY" });

@@ -2213,8 +2213,6 @@ datetime('now','localtime'), datetime('now','localtime')
   d.warehouseUsd || "",
   d.deliveryUsd || "",
   d.adCostRmb || "",
-  d.storageRateUsd || "0.78",
-  d.amazonReturnCostRmb || "",
 d.storageRateUsd || "0.78",
 d.amazonReturnCostRmb || "",
 d.returnCostByRateRmb || "",

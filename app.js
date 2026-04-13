@@ -1076,19 +1076,25 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
             <td><input class="input calc" type="number" step="0.001" name="commissionRate" id="commissionRate" value="${esc(row.commissionRate || "15")}" /></td>
           </tr>
           <tr>
-            <td class="label">分销价*</td>
-            <td><input class="input calc" type="number" step="0.001" name="fenxiaoPrice" id="fenxiaoPrice" value="${esc(row.fenxiaoPrice || "")}" /></td>
-            <td class="label">广告费(%)</td>
-            
-            <td><input class="input calc" type="number" step="0.001" name="adRate" id="adRate" value="${esc(row.adRate || "15")}" /></td>
-            <td class="label">仓储费率</td>
-            <td><input class="input calc" type="number" step="0.001" name="storageRateUsd" id="storageRateUsd" value="${esc(row.storageRateUsd || "0.78")}" /></td>
-            <td class="label">亚马逊退货成本(RMB)</td>
-<td><input class="input readonly-red" type="number" step="0.001" name="amazonReturnCostRmb" id="amazonReturnCostRmb" value="${esc(row.amazonReturnCostRmb || "")}" readonly /></td>
+  <td class="label">分销价*</td>
+  <td><input class="input calc" type="number" step="0.001" name="fenxiaoPrice" id="fenxiaoPrice" value="${esc(row.fenxiaoPrice || "")}" /></td>
+  <td class="label">广告费(%)</td>
+  <td><input class="input calc" type="number" step="0.001" name="adRate" id="adRate" value="${esc(row.adRate || "15")}" /></td>
+</tr>
 
-<td class="label">退货成本(RMB)</td>
-<td><input class="input readonly-red" type="number" step="0.001" name="returnCostByRateRmb" id="returnCostByRateRmb" value="${esc(row.returnCostByRateRmb || "")}" readonly /></td>
-            </tr>
+<tr>
+  <td class="label">仓储费率</td>
+  <td><input class="input calc" type="number" step="0.001" name="storageRateUsd" id="storageRateUsd" value="${esc(row.storageRateUsd || "0.78")}" /></td>
+  <td class="label">亚马逊退货成本(RMB)</td>
+  <td><input class="input readonly-red" type="number" step="0.001" name="amazonReturnCostRmb" id="amazonReturnCostRmb" value="${esc(row.amazonReturnCostRmb || "")}" readonly /></td>
+</tr>
+
+<tr>
+  <td class="label">退货率(%)</td>
+  <td><input class="input calc" type="number" step="0.001" name="returnRate" id="returnRate" value="${esc(row.returnRate || "")}" /></td>
+  <td class="label">退货成本(RMB)</td>
+  <td><input class="input readonly-red" type="number" step="0.001" name="returnCostRmb" id="returnCostRmb" value="${esc(row.returnCostRmb || "")}" readonly /></td>
+</tr>
             <tr>
   <td class="label">仓储费率</td>
   <td><input class="input calc" type="number" step="0.001" name="storageRateUsd" id="storageRateUsd" value="${esc(row.storageRateUsd || "0.78")}" /></td>

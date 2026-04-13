@@ -1095,13 +1095,6 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
   <td class="label">退货成本(RMB)</td>
   <td><input class="input readonly-red" type="number" step="0.001" name="returnCostRmb" id="returnCostRmb" value="${esc(row.returnCostRmb || "")}" readonly /></td>
 </tr>
-            <tr>
-  <td class="label">仓储费率</td>
-  <td><input class="input calc" type="number" step="0.001" name="storageRateUsd" id="storageRateUsd" value="${esc(row.storageRateUsd || "0.78")}" /></td>
-
-  <td class="label">亚马逊退货成本(RMB)</td>
-  <td><input class="input readonly-red" type="number" name="amazonReturnCostRmb" id="amazonReturnCostRmb" readonly /></td>
-</tr>
 <tr>
   <td class="label">退货率(%)</td>
   <td><input class="input calc" type="number" step="0.001" name="returnRate" id="returnRate" value="${esc(row.returnRate || "")}" /></td>
@@ -1282,7 +1275,7 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
       <div class="white-gap"></div>
 
 <div class="section">
-  <table class="layout fee-layout">
+  </table>
     <colgroup>
       <col style="width: 12.5%;">
       <col style="width: 12.5%;">
@@ -1296,7 +1289,7 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
 
     <tr>
       <td class="label">FBA费用(RMB)</td>
-      <td><input class="input calc-manual" type="number" step="0.001" name="fbaFeeRmb" id="fbaFeeRmb" value="${esc(row.fbaFeeRmb || "")}" /></td>
+      <td><input class="input readonly-gray" type="number" step="0.001" name="fbaFeeRmb" id="fbaFeeRmb" value="${esc(row.fbaFeeRmb || "")}" readonly /></td>
 
       <td class="label">佣金(RMB)</td>
       <td><input class="input readonly-gray" type="number" step="0.001" name="commissionRmb" id="commissionRmb" value="${esc(row.commissionRmb || "")}" readonly /></td>
@@ -1321,7 +1314,7 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
       <td class="label"></td>
       <td></td>
     </tr>
-  <table class="layout fee-layout">
+  </table>
 </div>
 
       <!-- 竞品区 START -->
@@ -1735,7 +1728,7 @@ const seaFee = readOrCalc("seaFee", seaTotalPrice);
 // 利润 =（销售价-分销价利润）- 对应运输价格 - FBA费用 - 佣金 - 退货成本 - 仓租 - 配送+分拨 - 广告费
 const warehouseRmb = warehouseUsd * exchangeRate;
 const deliveryRmb = deliveryUsd * exchangeRate;
-const profitBase = sellingPriceRmb;
+const profitBase = profitSellDiff;
 
 const expressProfit = readOrCalc(
   "expressProfit",
@@ -1984,14 +1977,9 @@ window.addEventListener("DOMContentLoaded", function () {
   "expressTax",
   "airTax",
   "seaTax",
-  "warehouseUsd",
   "deliveryUsd",
   "returnRate"
 ].forEach(bindCalc);
-
-[
-  "fbaFeeRmb"
-].forEach(bindManualCalc);
 
   savePriceCache();
   calcAll();
@@ -2605,7 +2593,9 @@ const warehouseUsd = Number($("warehouseUsd")?.value || 0);
 const deliveryUsd = Number($("deliveryUsd")?.value || 0);
 
 // FBA费用：手动输入
-const fbaFeeRmb = Number($("fbaFeeRmb")?.value || 0);
+const shippingWeightLb = getAmazonShippingWeightLb(detectedTier, lengthCm, widthCm, heightCm, actualWeight);
+const fbaFeeUsd = getFbaFeeUsd2026(detectedTier, shippingWeightLb, sellingPriceUsd);
+const fbaFeeRmb = readOrCalc("fbaFeeRmb", fbaFeeUsd * exchangeRate);
 
 // 退货成本 = 销售价RMB * 退货率
 const returnRate = Number($("returnRate")?.value || 0);

@@ -2864,6 +2864,7 @@ for(let k in d){
     airWeightQty = ?, airUnitPrice = ?, airTax = ?, airTotalPrice = ?,
     seaWeightQty = ?, seaUnitPrice = ?, seaTax = ?, seaTotalPrice = ?,
     fbaFeeRmb = ?, commissionRmb = ?, returnCostRmb = ?, returnRate = ?, warehouseUsd = ?, deliveryUsd = ?, adCostRmb = ?,
+    storageRateUsd = ?, amazonReturnCostRmb = ?, returnCostByRateRmb = ?,
     competitor1Name = ?, competitor1Link = ?, competitor1Image = ?, competitor1Price = ?,
     competitor2Name = ?, competitor2Link = ?, competitor2Image = ?, competitor2Price = ?,
     competitor3Name = ?, competitor3Link = ?, competitor3Image = ?, competitor3Price = ?,

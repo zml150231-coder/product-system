@@ -2557,7 +2557,7 @@ const sellingPriceRmb = sellingPriceUsd * exchangeRate;
 const profitCostDiff = fenxiaoPrice - purchaseCost;
 const profitRate1 = purchaseCost ? (profitCostDiff / purchaseCost) * 100 : 0;
 const profitSellDiff = sellingPriceRmb - fenxiaoPrice;
-const profitRate2 = fenxiaoPrice ? (profitSellDiff / fenxiaoPrice) * 100 : 0;
+const profitRate2 = sellingPriceRmb ? (profitSellDiff / sellingPriceRmb) * 100 : 0;
 
 setVal("sellingPriceRmb", sellingPriceRmb);
 setVal("profitCostDiff", profitCostDiff);
@@ -2565,9 +2565,9 @@ setVal("profitRate1", profitRate1);
 setVal("profitSellDiff", profitSellDiff);
 setVal("profitRate2", profitRate2);
 
-const expressWeightQty = Math.max(actualWeight, volumeWeight1);
-const airWeightQty = Math.max(actualWeight, volumeWeight1);
-const seaWeightQty = Math.max(actualWeight, volumeWeight2);
+const expressWeightQty = volumeWeight2;
+const airWeightQty = volumeWeight2;
+const seaWeightQty = volumeWeight1;
 
 setVal("expressWeightQty", expressWeightQty);
 setVal("airWeightQty", airWeightQty);
@@ -2589,7 +2589,15 @@ const adCostRmb = sellingPriceRmb * (adRate / 100);
 setVal("adCostRmb", adCostRmb);
 
 // 仓租 / 配送+分拨：页面输入
-const warehouseUsd = Number($("warehouseUsd")?.value || 0);
+const cubicFeet =
+  lengthCm > 0 && widthCm > 0 && heightCm > 0
+    ? (lengthCm * widthCm * heightCm) / 28316.8466
+    : 0;
+
+const storageRateUsd = Number($("storageRateUsd")?.value || 0.78);
+const warehouseUsd = cubicFeet * storageRateUsd;
+setVal("warehouseUsd", warehouseUsd);
+
 const deliveryUsd = Number($("deliveryUsd")?.value || 0);
 
 // FBA费用：手动输入
@@ -2597,9 +2605,19 @@ const shippingWeightLb = getAmazonShippingWeightLb(detectedTier, lengthCm, width
 const fbaFeeUsd = getFbaFeeUsd2026(detectedTier, shippingWeightLb, sellingPriceUsd);
 const fbaFeeRmb = readOrCalc("fbaFeeRmb", fbaFeeUsd * exchangeRate);
 
-// 退货成本 = 销售价RMB * 退货率
 const returnRate = Number($("returnRate")?.value || 0);
-const returnCostRmb = sellingPriceRmb * (returnRate / 100);
+
+// 亚马逊退货成本 = 佣金 * 20%，最高 5 USD
+const amazonReturnCostUsd = Math.min((commissionRmb / exchangeRate) * 0.2, 5);
+const amazonReturnCostRmb = amazonReturnCostUsd * exchangeRate;
+setVal("amazonReturnCostRmb", amazonReturnCostRmb);
+
+// 退货率成本 = 销售价RMB * 退货率
+const returnCostByRateRmb = sellingPriceRmb * (returnRate / 100);
+setVal("returnCostByRateRmb", returnCostByRateRmb);
+
+// 总退货成本
+const returnCostRmb = amazonReturnCostRmb + returnCostByRateRmb;
 setVal("returnCostRmb", returnCostRmb);
 
 // 运费(RMB)

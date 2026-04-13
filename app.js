@@ -1976,10 +1976,40 @@ window.addEventListener("DOMContentLoaded", function () {
   "seaUnitPrice",
   "expressTax",
   "airTax",
-  "seaTax",
-  "deliveryUsd",
-  "returnRate"
+  "seaTax"
 ].forEach(bindCalc);
+
+[
+  "volumeWeight6000",
+  "volumeWeight5000",
+  "sellingPriceRmb",
+  "profitCostDiff",
+  "profitRate1",
+  "profitSellDiff",
+  "profitRate2",
+  "expressWeightQty",
+  "airWeightQty",
+  "seaWeightQty",
+  "expressTotalPrice",
+  "airTotalPrice",
+  "seaTotalPrice",
+  "commissionRmb",
+  "adCostRmb",
+  "warehouseUsd",
+  "fbaFeeRmb",
+  "amazonReturnCostRmb",
+  "returnCostByRateRmb",
+  "returnCostRmb",
+  "expressFee",
+  "airFee",
+  "seaFee",
+  "expressProfit",
+  "airProfit",
+  "seaProfit",
+  "expressProfitRate",
+  "airProfitRate",
+  "seaProfitRate"
+].forEach(bindManualCalc);
 
   savePriceCache();
   calcAll();

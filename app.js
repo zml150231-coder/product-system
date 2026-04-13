@@ -291,9 +291,10 @@ db.serialize(() => {
       warehouseUsd TEXT,
       deliveryUsd TEXT,
       adCostRmb TEXT,
-
+      storageRateUsd TEXT,
+      amazonReturnCostRmb TEXT,
+      returnCostByRateRmb TEXT,
       photoPath TEXT,
-
       ownerUserId INTEGER,
       ownerUsername TEXT,
       lastEditedByUserId INTEGER,
@@ -304,11 +305,14 @@ db.serialize(() => {
     )
   `);
 
-  db.run(`ALTER TABLE products ADD COLUMN approveStatus TEXT DEFAULT 'pending'`, ()=>{});
-  db.run(`ALTER TABLE products ADD COLUMN returnRate TEXT`, ()=>{});
+db.run(`ALTER TABLE products ADD COLUMN approveStatus TEXT DEFAULT 'pending'`, ()=>{});
+db.run(`ALTER TABLE products ADD COLUMN returnRate TEXT`, ()=>{});
 db.run(`ALTER TABLE products ADD COLUMN approvedBy TEXT`, ()=>{});
 db.run(`ALTER TABLE products ADD COLUMN approvedAt TEXT`, ()=>{});
 db.run(`ALTER TABLE products ADD COLUMN rejectReason TEXT`, ()=>{});
+db.run(`ALTER TABLE products ADD COLUMN storageRateUsd TEXT`, ()=>{});
+db.run(`ALTER TABLE products ADD COLUMN amazonReturnCostRmb TEXT`, ()=>{});
+db.run(`ALTER TABLE products ADD COLUMN returnCostByRateRmb TEXT`, ()=>{});
 
 // 竞品信息先用 3 组最简单，别一开始搞太复杂
 db.run(`ALTER TABLE products ADD COLUMN competitor1Name TEXT`, ()=>{});
@@ -1049,7 +1053,7 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
             </td>
 
             <td class="label">产品名称*</td>
-<td><input class="input" type="text" name="productName" id="productName" value="${esc(row.productName || "")}" /></td>
+      <td><input class="input" type="text" name="productName" id="productName" value="${esc(row.productName || "")}" /></td>
 <td class="label"></td>
 <td></td>
 <td></td>
@@ -1076,7 +1080,14 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
             <td><input class="input calc" type="number" step="0.001" name="fenxiaoPrice" id="fenxiaoPrice" value="${esc(row.fenxiaoPrice || "")}" /></td>
             <td class="label">广告费(%)</td>
             <td><input class="input calc" type="number" step="0.001" name="adRate" id="adRate" value="${esc(row.adRate || "15")}" /></td>
-          </tr>
+            <td class="label">仓储费率</td>
+            <td><input class="input calc" type="number" step="0.001" name="storageRateUsd" id="storageRateUsd" value="${esc(row.storageRateUsd || "0.78")}" /></td>
+            <td class="label">亚马逊退货成本(RMB)</td>
+<td><input class="input readonly-red" type="number" step="0.001" name="amazonReturnCostRmb" id="amazonReturnCostRmb" value="${esc(row.amazonReturnCostRmb || "")}" readonly /></td>
+
+<td class="label">退货成本(RMB)</td>
+<td><input class="input readonly-red" type="number" step="0.001" name="returnCostByRateRmb" id="returnCostByRateRmb" value="${esc(row.returnCostByRateRmb || "")}" readonly /></td>
+            </tr>
           <tr>
             <td class="label">分销减采购成本利润*</td>
             <td><input class="input readonly-red" type="number" step="0.001" name="profitCostDiff" id="profitCostDiff" value="${esc(row.profitCostDiff || "")}" readonly /></td>
@@ -1644,47 +1655,56 @@ function calcAll() {
   }
 
   const sellingPriceRmb = readOrCalc("sellingPriceRmb", sellingPriceUsd * exchangeRate);
-  const profitCostDiff = readOrCalc("profitCostDiff", fenxiaoPrice - purchaseCost);
-  const profitRate1 = readOrCalc("profitRate1", purchaseCost ? (profitCostDiff / purchaseCost) * 100 : 0);
-  const profitSellDiff = readOrCalc("profitSellDiff", sellingPriceRmb - fenxiaoPrice);
-  const profitRate2 = readOrCalc("profitRate2", fenxiaoPrice ? (profitSellDiff / fenxiaoPrice) * 100 : 0);
+const profitCostDiff = readOrCalc("profitCostDiff", fenxiaoPrice - purchaseCost);
+const profitRate1 = readOrCalc("profitRate1", purchaseCost ? (profitCostDiff / purchaseCost) * 100 : 0);
+const profitSellDiff = readOrCalc("profitSellDiff", sellingPriceRmb - fenxiaoPrice);
 
-  const expressWeightQty = readOrCalc("expressWeightQty", Math.max(actualWeight, volumeWeight6000));
-  const airWeightQty = readOrCalc("airWeightQty", Math.max(actualWeight, volumeWeight6000));
-  const seaWeightQty = readOrCalc("seaWeightQty", Math.max(actualWeight, volumeWeight5000));
+// 改成：利润率2 = （销售价-分销价利润） / 销售价RMB
+const profitRate2 = readOrCalc("profitRate2", sellingPriceRmb ? (profitSellDiff / sellingPriceRmb) * 100 : 0);
 
+// 快递、空运 = 体积重2（5000）
+// 海运 = 体积重1（6000）
+const expressWeightQty = readOrCalc("expressWeightQty", volumeWeight5000);
+const airWeightQty = readOrCalc("airWeightQty", volumeWeight5000);
+const seaWeightQty = readOrCalc("seaWeightQty", volumeWeight6000);
   const expressTotalPrice = readOrCalc("expressTotalPrice", expressWeightQty * expressUnitPrice * expressTax);
   const airTotalPrice = readOrCalc("airTotalPrice", airWeightQty * airUnitPrice * airTax);
   const seaTotalPrice = readOrCalc("seaTotalPrice", seaWeightQty * seaUnitPrice * seaTax);
 
 const commissionRmb = readOrCalc("commissionRmb", sellingPriceRmb * commissionRate / 100);
-const adCostRmb = sellingPriceRmb * adRate / 100;
-setVal("adCostRmb", adCostRmb);
+// 广告费
+const adCostRmb = readOrCalc("adCostRmb", sellingPriceRmb * adRate / 100);
 
-const shippingWeightLb = getAmazonShippingWeightLb(
-  detectedTier,
-  lengthCm,
-  widthCm,
-  heightCm,
-  actualWeight
-);
-
-const fbaFeeUsd = getFbaFeeUsd2026(
-  detectedTier,
-  shippingWeightLb,
-  sellingPriceUsd
-);
-
+// FBA费用
 const fbaFeeRmb = readOrCalc("fbaFeeRmb", fbaFeeUsd * exchangeRate);
 
+// 体积（立方英尺）
 const cubicFeet =
   lengthCm > 0 && widthCm > 0 && heightCm > 0
     ? (lengthCm * widthCm * heightCm) / 28316.8466
     : 0;
 
-const warehouseUsd = readOrCalc("warehouseUsd", cubicFeet * 0.78);
+// 仓储费率（默认0.78，可手动改）
+const storageRateUsd = readOrCalc("storageRateUsd", num("storageRateUsd") || 0.78);
+
+// 仓租 = 体积 * 仓储费率
+const warehouseUsd = readOrCalc("warehouseUsd", cubicFeet * storageRateUsd);
+
+// 配送+分拨（手动）
 const deliveryUsd = num("deliveryUsd");
-const returnCostRmb = num("returnCostRmb");
+
+// ===== 退货成本逻辑 =====
+
+// 亚马逊退货成本（佣金20%，封顶5USD）
+const amazonReturnCostUsd = Math.min((commissionRmb / exchangeRate) * 0.2, 5);
+const amazonReturnCostRmb = readOrCalc("amazonReturnCostRmb", amazonReturnCostUsd * exchangeRate);
+
+// 退货率成本（销售价RMB * 退货率）
+const returnRate = num("returnRate");
+const returnCostByRateRmb = readOrCalc("returnCostByRateRmb", sellingPriceRmb * (returnRate / 100));
+
+// 总退货成本
+const returnCostRmb = readOrCalc("returnCostRmb", amazonReturnCostRmb + returnCostByRateRmb);
 
 // 运输方式右边显示下面的价格(RMB)
 const expressFee = readOrCalc("expressFee", expressTotalPrice);
@@ -1929,7 +1949,9 @@ window.addEventListener("DOMContentLoaded", function () {
   "commissionRate",
   "fenxiaoPrice",
   "adRate",
-  "adRate",
+  "storageRateUsd",
+  "deliveryUsd",
+  "returnRate",
   "sellingPriceUsd",
   "lengthCm",
   "widthCm",
@@ -2168,6 +2190,9 @@ changedFields,
   d.warehouseUsd || "",
   d.deliveryUsd || "",
   d.adCostRmb || "",
+  d.storageRateUsd || "0.78",
+d.amazonReturnCostRmb || "",
+d.returnCostByRateRmb || "",
  d.competitor1Name || "",
 d.competitor1Link || "",
 d.competitor1Image || "",
@@ -2876,6 +2901,9 @@ for(let k in d){
   d.warehouseUsd || "",
   d.deliveryUsd || "",
   d.adCostRmb || "",
+  d.storageRateUsd || "0.78",
+  d.amazonReturnCostRmb || "",
+  d.returnCostByRateRmb || "",
   d.competitor1Name || "",
   d.competitor1Link || "",
   d.competitor1Image || "",

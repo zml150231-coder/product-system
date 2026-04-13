@@ -2155,9 +2155,9 @@ changedFields,
   ?, ?, ?, ?,
   ?, ?, ?, ?,
   ?, ?, ?, ?,
-  ?,
-  ?, ?, ?, ?, ?,
-  datetime('now','localtime'), datetime('now','localtime')
+ ?,
+?, ?, ?, ?, ?,
+datetime('now','localtime'), datetime('now','localtime')
 )
     `;
 
@@ -2247,6 +2247,8 @@ d.competitor5Price || "",
   u.username
 ];
 
+    console.log("save placeholders =", (sql.match(/\?/g) || []).length);
+console.log("save values =", values.length);
     db.run(sql, values, function (err) {
       if (err) {
         return res.send("保存失败：" + err.message);

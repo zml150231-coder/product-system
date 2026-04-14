@@ -1102,9 +1102,7 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
           <tr>
   <td class="label">仓储费率</td>
   <td><input class="input calc" type="number" step="0.001" name="storageRateUsd" id="storageRateUsd" value="${esc(row.storageRateUsd || "0.78")}" /></td>
-  <td class="label">亚马逊退货成本(RMB)</td>
-  <td><input class="input readonly-red" type="number" step="0.001" name="amazonReturnCostRmb" id="amazonReturnCostRmb" value="${esc(row.amazonReturnCostRmb || "")}" readonly /></td>
-</tr>
+  </tr>
 
 <input type="hidden" name="returnCostByRateRmb" id="returnCostByRateRmb" value="${esc(row.returnCostByRateRmb || "")}">
           <tr>
@@ -1699,10 +1697,6 @@ const seaFee = readOrCalc("seaFee", seaTotalPrice);
 // 利润 =（销售价-分销价利润）- 对应运输价格 - FBA费用 - 佣金 - 退货成本 - 仓租 - 配送+分拨 - 广告费
 const warehouseRmb = warehouseUsd * exchangeRate;
 const deliveryRmb = deliveryUsd * exchangeRate;
-
-const expressFee = readOrCalc("expressFee", expressTotalPrice);
-const airFee = readOrCalc("airFee", airTotalPrice);
-const seaFee = readOrCalc("seaFee", seaTotalPrice);
 
 // 利润 = 销售价RMB - FBA - 佣金 - 退货成本 - 仓租 - 配送+分拨 - 广告费 - 对应运费
 const expressProfit = readOrCalc(

@@ -1718,6 +1718,7 @@ const seaProfit = readOrCalc(
 readOrCalc("expressProfitRate", sellingPriceRmb ? (expressProfit / sellingPriceRmb) * 100 : 0);
 readOrCalc("airProfitRate", sellingPriceRmb ? (airProfit / sellingPriceRmb) * 100 : 0);
 readOrCalc("seaProfitRate", sellingPriceRmb ? (seaProfit / sellingPriceRmb) * 100 : 0);
+}
 
 function fetchRate() {
   const rateInput = $("exchangeRate");

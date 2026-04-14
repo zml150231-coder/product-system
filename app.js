@@ -1104,7 +1104,6 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
   <td><input class="input calc" type="number" step="0.001" name="storageRateUsd" id="storageRateUsd" value="${esc(row.storageRateUsd || "0.78")}" /></td>
   </tr>
 
-<input type="hidden" name="returnCostByRateRmb" id="returnCostByRateRmb" value="${esc(row.returnCostByRateRmb || "")}">
           <tr>
             <td class="label">备注</td>
             <td colspan="3"><textarea class="textarea" name="remark" id="remark">${esc(row.remark || "")}</textarea></td>
@@ -1278,8 +1277,8 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
       <td class="label">佣金(RMB)</td>
       <td><input class="input readonly-gray" type="number" step="0.001" name="commissionRmb" id="commissionRmb" value="${esc(row.commissionRmb || "")}" readonly /></td>
 
-      <td class="label">退货成本(RMB)</td>
-      <td><input class="input readonly-gray" type="number" step="0.001" name="returnCostRmb" id="returnCostRmb" value="${esc(row.returnCostRmb || "")}" readonly /></td>
+      <td class="label">亚马逊退货成本(RMB)</td>
+      <td><input class="input readonly-gray" type="number" step="0.001" name="amazonReturnCostRmb" id="amazonReturnCostRmb" value="${esc(row.amazonReturnCostRmb || "")}" readonly /></td>
 
       <td class="label">退货率(%)</td>
       <td><input class="input calc" type="number" step="0.001" name="returnRate" id="returnRate" value="${esc(row.returnRate || "")}" /></td>
@@ -1287,16 +1286,16 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
 
     <tr>
       <td class="label">仓租(USD)</td>
-      <td><input class="input calc" type="number" step="0.001" name="warehouseUsd" id="warehouseUsd" value="${esc(row.warehouseUsd || "")}" /></td>
+     <td><input class="input readonly-gray" type="number" step="0.001" name="warehouseUsd" id="warehouseUsd" value="${esc(row.warehouseUsd || "")}" readonly /></td>
 
       <td class="label">配送+分拨(USD)</td>
       <td><input class="input calc" type="number" step="0.001" name="deliveryUsd" id="deliveryUsd" value="${esc(row.deliveryUsd || "")}" /></td>
 
       <td class="label">广告费(RMB)</td>
-      <td><input class="input calc-manual" type="number" step="0.001" name="adCostRmb" id="adCostRmb" value="${esc(row.adCostRmb || "")}" /></td>
+    <td><input class="input readonly-gray" type="number" step="0.001" name="adCostRmb" id="adCostRmb" value="${esc(row.adCostRmb || "")}" readonly /></td>
 
-      <td class="label"></td>
-      <td></td>
+     <td class="label">退货成本(RMB)</td>
+<td><input class="input readonly-gray" type="number" step="0.001" name="returnCostByRateRmb" id="returnCostByRateRmb" value="${esc(row.returnCostByRateRmb || "")}" readonly /></td>
     </tr>
   </table>
 </div>
@@ -1673,45 +1672,62 @@ const seaTotalPrice = readOrCalc("seaTotalPrice", seaWeightQty * seaUnitPrice * 
 // 佣金 = 销售价USD * 佣金% * 汇率
 const commissionRmb = readOrCalc("commissionRmb", sellingPriceUsd * (commissionRate / 100) * exchangeRate);
 
-// 广告费RMB = 广告费% * 销售价USD
-const adCostRmb = readOrCalc("adCostRmb", sellingPriceUsd * (adRate / 100));
+// 广告费RMB = 销售价RMB * 广告费%
+const adCostRmb = readOrCalc("adCostRmb", sellingPriceRmb * (adRate / 100));
 
 // FBA费用
 const shippingWeightLb = getAmazonShippingWeightLb(detectedTier, lengthCm, widthCm, heightCm, actualWeight);
 const fbaFeeUsd = getFbaFeeUsd2026(detectedTier, shippingWeightLb, sellingPriceUsd);
 const fbaFeeRmb = readOrCalc("fbaFeeRmb", fbaFeeUsd * exchangeRate);
 
-// 仓租、配送+分拨：手动录入
-const warehouseUsd = num("warehouseUsd");
+// 仓租 = 体积(cubic feet) * 仓储费率
+const cubicFeet =
+  lengthCm > 0 && widthCm > 0 && heightCm > 0
+    ? (lengthCm * widthCm * heightCm) / 28316.8466
+    : 0;
+
+const storageRateUsd = num("storageRateUsd") || 0.78;
+const warehouseUsd = readOrCalc("warehouseUsd", cubicFeet * storageRateUsd);
+
+// 配送+分拨：手动录入
 const deliveryUsd = num("deliveryUsd");
 
-// 退货成本 = 销售价RMB * 退货率
 const returnRate = num("returnRate");
-const returnCostRmb = readOrCalc("returnCostRmb", sellingPriceRmb * (returnRate / 100));
+
+// 亚马逊退货成本 = 佣金 * 20%，最高 5 USD 封顶
+const amazonReturnCostUsd = exchangeRate
+  ? Math.min((commissionRmb / exchangeRate) * 0.2, 5)
+  : 0;
+const amazonReturnCostRmb = readOrCalc("amazonReturnCostRmb", amazonReturnCostUsd * exchangeRate);
+
+// 退货成本 = 销售价RMB * 退货率
+const returnCostByRateRmb = readOrCalc("returnCostByRateRmb", sellingPriceRmb * (returnRate / 100));
+
+// 总退货成本
+const returnCostRmb = readOrCalc("returnCostRmb", amazonReturnCostRmb + returnCostByRateRmb);
 
 // 运输方式右边显示下面的价格(RMB)
 const expressFee = readOrCalc("expressFee", expressTotalPrice);
 const airFee = readOrCalc("airFee", airTotalPrice);
 const seaFee = readOrCalc("seaFee", seaTotalPrice);
 
-// 利润 =（销售价-分销价利润）- 对应运输价格 - FBA费用 - 佣金 - 退货成本 - 仓租 - 配送+分拨 - 广告费
 const warehouseRmb = warehouseUsd * exchangeRate;
 const deliveryRmb = deliveryUsd * exchangeRate;
 
-// 利润 = 销售价RMB - FBA - 佣金 - 退货成本 - 仓租 - 配送+分拨 - 广告费 - 对应运费
+// 利润 =（销售价-分销价利润）- 对应运费 - FBA - 佣金 - 总退货成本 - 仓租 - 配送+分拨 - 广告费
 const expressProfit = readOrCalc(
   "expressProfit",
-  sellingPriceRmb - fbaFeeRmb - commissionRmb - returnCostRmb - warehouseRmb - deliveryRmb - adCostRmb - expressFee
+  profitSellDiff - expressFee - fbaFeeRmb - commissionRmb - returnCostRmb - warehouseRmb - deliveryRmb - adCostRmb
 );
 
 const airProfit = readOrCalc(
   "airProfit",
-  sellingPriceRmb - fbaFeeRmb - commissionRmb - returnCostRmb - warehouseRmb - deliveryRmb - adCostRmb - airFee
+  profitSellDiff - airFee - fbaFeeRmb - commissionRmb - returnCostRmb - warehouseRmb - deliveryRmb - adCostRmb
 );
 
 const seaProfit = readOrCalc(
   "seaProfit",
-  sellingPriceRmb - fbaFeeRmb - commissionRmb - returnCostRmb - warehouseRmb - deliveryRmb - adCostRmb - seaFee
+  profitSellDiff - seaFee - fbaFeeRmb - commissionRmb - returnCostRmb - warehouseRmb - deliveryRmb - adCostRmb
 );
 
 // 利润率 = 利润 / 销售价RMB

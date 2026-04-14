@@ -1081,10 +1081,6 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
   <td class="label">广告费(%)</td>
   <td><input class="input calc" type="number" step="0.001" name="adRate" id="adRate" value="${esc(row.adRate || "15")}" /></td>
 </tr>
-
-<tr>
-
- 
           <tr>
             <td class="label">分销减采购成本利润*</td>
             <td><input class="input readonly-red" type="number" step="0.001" name="profitCostDiff" id="profitCostDiff" value="${esc(row.profitCostDiff || "")}" readonly /></td>
@@ -1681,6 +1677,9 @@ const adCostRmb = readOrCalc("adCostRmb", sellingPriceRmb * adRate / 100);
 
 // FBA费用
 const fbaFeeRmb = readOrCalc("fbaFeeRmb", fbaFeeUsd * exchangeRate);
+
+const shippingWeightLb = getAmazonShippingWeightLb(detectedTier, lengthCm, widthCm, heightCm, actualWeight);
+const fbaFeeUsd = getFbaFeeUsd2026(detectedTier, shippingWeightLb, sellingPriceUsd);
 
 // 体积（立方英尺）
 const cubicFeet =

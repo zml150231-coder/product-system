@@ -1662,52 +1662,34 @@ const profitSellDiff = readOrCalc("profitSellDiff", sellingPriceRmb - fenxiaoPri
 // 改成：利润率2 = （销售价-分销价利润） / 销售价RMB
 const profitRate2 = readOrCalc("profitRate2", sellingPriceRmb ? (profitSellDiff / sellingPriceRmb) * 100 : 0);
 
-// 快递、空运 = 体积重2（5000）
-// 海运 = 体积重1（6000）
-const expressWeightQty = readOrCalc("expressWeightQty", volumeWeight5000);
-const airWeightQty = readOrCalc("airWeightQty", volumeWeight5000);
-const seaWeightQty = readOrCalc("seaWeightQty", volumeWeight6000);
-  const expressTotalPrice = readOrCalc("expressTotalPrice", expressWeightQty * expressUnitPrice * expressTax);
-  const airTotalPrice = readOrCalc("airTotalPrice", airWeightQty * airUnitPrice * airTax);
-  const seaTotalPrice = readOrCalc("seaTotalPrice", seaWeightQty * seaUnitPrice * seaTax);
+// 快递、空运 = 体积重1（6000）
+// 海运 = 体积重2（5000）
+const expressWeightQty = readOrCalc("expressWeightQty", volumeWeight6000);
+const airWeightQty = readOrCalc("airWeightQty", volumeWeight6000);
+const seaWeightQty = readOrCalc("seaWeightQty", volumeWeight5000);
 
-const commissionRmb = readOrCalc("commissionRmb", sellingPriceRmb * commissionRate / 100);
-// 广告费
-const adCostRmb = readOrCalc("adCostRmb", sellingPriceRmb * adRate / 100);
+const expressTotalPrice = readOrCalc("expressTotalPrice", expressWeightQty * expressUnitPrice * expressTax);
+const airTotalPrice = readOrCalc("airTotalPrice", airWeightQty * airUnitPrice * airTax);
+const seaTotalPrice = readOrCalc("seaTotalPrice", seaWeightQty * seaUnitPrice * seaTax);
+
+// 佣金 = 销售价USD * 佣金% * 汇率
+const commissionRmb = readOrCalc("commissionRmb", sellingPriceUsd * (commissionRate / 100) * exchangeRate);
+
+// 广告费RMB = 广告费% * 销售价USD
+const adCostRmb = readOrCalc("adCostRmb", sellingPriceUsd * (adRate / 100));
 
 // FBA费用
-const fbaFeeRmb = readOrCalc("fbaFeeRmb", fbaFeeUsd * exchangeRate);
-
 const shippingWeightLb = getAmazonShippingWeightLb(detectedTier, lengthCm, widthCm, heightCm, actualWeight);
 const fbaFeeUsd = getFbaFeeUsd2026(detectedTier, shippingWeightLb, sellingPriceUsd);
+const fbaFeeRmb = readOrCalc("fbaFeeRmb", fbaFeeUsd * exchangeRate);
 
-// 体积（立方英尺）
-const cubicFeet =
-  lengthCm > 0 && widthCm > 0 && heightCm > 0
-    ? (lengthCm * widthCm * heightCm) / 28316.8466
-    : 0;
-
-// 仓储费率（默认0.78，可手动改）
-const storageRateUsd = readOrCalc("storageRateUsd", num("storageRateUsd") || 0.78);
-
-// 仓租 = 体积 * 仓储费率
-const warehouseUsd = readOrCalc("warehouseUsd", cubicFeet * storageRateUsd);
-
-// 配送+分拨（手动）
+// 仓租、配送+分拨：手动录入
+const warehouseUsd = num("warehouseUsd");
 const deliveryUsd = num("deliveryUsd");
 
-// ===== 退货成本逻辑 =====
-
-// 亚马逊退货成本（佣金20%，封顶5USD）
-const amazonReturnCostUsd = Math.min((commissionRmb / exchangeRate) * 0.2, 5);
-const amazonReturnCostRmb = readOrCalc("amazonReturnCostRmb", amazonReturnCostUsd * exchangeRate);
-
-// 退货率成本（销售价RMB * 退货率）
+// 退货成本 = 销售价RMB * 退货率
 const returnRate = num("returnRate");
-const returnCostByRateRmb = readOrCalc("returnCostByRateRmb", sellingPriceRmb * (returnRate / 100));
-
-// 总退货成本
-const returnCostRmb = readOrCalc("returnCostRmb", amazonReturnCostRmb + returnCostByRateRmb);
+const returnCostRmb = readOrCalc("returnCostRmb", sellingPriceRmb * (returnRate / 100));
 
 // 运输方式右边显示下面的价格(RMB)
 const expressFee = readOrCalc("expressFee", expressTotalPrice);
@@ -1717,27 +1699,31 @@ const seaFee = readOrCalc("seaFee", seaTotalPrice);
 // 利润 =（销售价-分销价利润）- 对应运输价格 - FBA费用 - 佣金 - 退货成本 - 仓租 - 配送+分拨 - 广告费
 const warehouseRmb = warehouseUsd * exchangeRate;
 const deliveryRmb = deliveryUsd * exchangeRate;
-const profitBase = profitSellDiff;
 
+const expressFee = readOrCalc("expressFee", expressTotalPrice);
+const airFee = readOrCalc("airFee", airTotalPrice);
+const seaFee = readOrCalc("seaFee", seaTotalPrice);
+
+// 利润 = 销售价RMB - FBA - 佣金 - 退货成本 - 仓租 - 配送+分拨 - 广告费 - 对应运费
 const expressProfit = readOrCalc(
   "expressProfit",
-  profitBase - expressTotalPrice - fbaFeeRmb - commissionRmb - returnCostRmb - warehouseRmb - deliveryRmb - adCostRmb
+  sellingPriceRmb - fbaFeeRmb - commissionRmb - returnCostRmb - warehouseRmb - deliveryRmb - adCostRmb - expressFee
 );
 
 const airProfit = readOrCalc(
   "airProfit",
-  profitBase - airTotalPrice - fbaFeeRmb - commissionRmb - returnCostRmb - warehouseRmb - deliveryRmb - adCostRmb
+  sellingPriceRmb - fbaFeeRmb - commissionRmb - returnCostRmb - warehouseRmb - deliveryRmb - adCostRmb - airFee
 );
 
 const seaProfit = readOrCalc(
   "seaProfit",
-  profitBase - seaTotalPrice - fbaFeeRmb - commissionRmb - returnCostRmb - warehouseRmb - deliveryRmb - adCostRmb
+  sellingPriceRmb - fbaFeeRmb - commissionRmb - returnCostRmb - warehouseRmb - deliveryRmb - adCostRmb - seaFee
 );
 
+// 利润率 = 利润 / 销售价RMB
 readOrCalc("expressProfitRate", sellingPriceRmb ? (expressProfit / sellingPriceRmb) * 100 : 0);
 readOrCalc("airProfitRate", sellingPriceRmb ? (airProfit / sellingPriceRmb) * 100 : 0);
 readOrCalc("seaProfitRate", sellingPriceRmb ? (seaProfit / sellingPriceRmb) * 100 : 0);
-}
 
 function fetchRate() {
   const rateInput = $("exchangeRate");

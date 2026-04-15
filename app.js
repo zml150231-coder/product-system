@@ -1710,8 +1710,6 @@ const deliveryRmb = num("deliveryUsd");
 
 const returnRate = num("returnRate");
 
-const returnRate = num("returnRate");
-
 // 亚马逊退货成本 = 原公式结果 × 退货率(%)
 const amazonReturnCostUsdBase = exchangeRate
   ? Math.min((commissionRmb / exchangeRate) * 0.2, 5)

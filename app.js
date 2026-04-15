@@ -354,7 +354,7 @@ db.run(`
   )
 `);
 
- db.get("SELECT * FROM users WHERE username = ?", ["gly123"], (err, row) => {
+db.get("SELECT * FROM users WHERE username = ?", ["dollywu"], (err, row) => {
   if (err) {
     console.error(err);
     return;
@@ -364,7 +364,7 @@ db.run(`
       `INSERT INTO users
        (username, password_hash, password_plain, is_admin, approval_status, approved_by, approved_at)
        VALUES (?, ?, ?, 1, 'approved', 'system', datetime('now','localtime'))`,
-      ["gly123", hashPassword("6604"), "6604"],
+      ["dollywu", hashPassword("bsq84049977"), "bsq84049977"],
       (e) => {
         if (e) console.error(e);
       }
@@ -377,7 +377,7 @@ db.run(`
            approved_by = 'system',
            approved_at = COALESCE(approved_at, datetime('now','localtime'))
        WHERE username = ?`,
-      ["gly123"],
+      ["dollywu"],
       (e) => {
         if (e) console.error(e);
       }
@@ -1659,11 +1659,11 @@ const profitSellDiff = readOrCalc("profitSellDiff", sellingPriceRmb - fenxiaoPri
 // 改成：利润率2 = （销售价-分销价利润） / 销售价RMB
 const profitRate2 = readOrCalc("profitRate2", sellingPriceRmb ? (profitSellDiff / sellingPriceRmb) * 100 : 0);
 
-// 快递、空运 = 体积重1（6000）
-// 海运 = 体积重2（5000）
-const expressWeightQty = readOrCalc("expressWeightQty", volumeWeight6000);
-const airWeightQty = readOrCalc("airWeightQty", volumeWeight6000);
-const seaWeightQty = readOrCalc("seaWeightQty", volumeWeight5000);
+// 快递、空运 = 体积重2（5000）
+// 海运 = 体积重1（6000）
+const expressWeightQty = readOrCalc("expressWeightQty", volumeWeight5000);
+const airWeightQty = readOrCalc("airWeightQty", volumeWeight5000);
+const seaWeightQty = readOrCalc("seaWeightQty", volumeWeight6000);
 
 const expressTotalPrice = readOrCalc("expressTotalPrice", expressWeightQty * expressUnitPrice * expressTax);
 const airTotalPrice = readOrCalc("airTotalPrice", airWeightQty * airUnitPrice * airTax);
@@ -1694,17 +1694,29 @@ const deliveryUsd = num("deliveryUsd");
 
 const returnRate = num("returnRate");
 
-// 亚马逊退货成本 = 佣金 * 20%，最高 5 USD 封顶
-const amazonReturnCostUsd = exchangeRate
+const returnRate = num("returnRate");
+
+// 亚马逊退货成本 = 原公式结果 × 退货率(%)
+const amazonReturnCostUsdBase = exchangeRate
   ? Math.min((commissionRmb / exchangeRate) * 0.2, 5)
   : 0;
-const amazonReturnCostRmb = readOrCalc("amazonReturnCostRmb", amazonReturnCostUsd * exchangeRate);
+
+const amazonReturnCostRmb = readOrCalc(
+  "amazonReturnCostRmb",
+  amazonReturnCostUsdBase * exchangeRate * (returnRate / 100)
+);
 
 // 退货成本 = 销售价RMB * 退货率
-const returnCostByRateRmb = readOrCalc("returnCostByRateRmb", sellingPriceRmb * (returnRate / 100));
+const returnCostByRateRmb = readOrCalc(
+  "returnCostByRateRmb",
+  sellingPriceRmb * (returnRate / 100)
+);
 
 // 总退货成本
-const returnCostRmb = readOrCalc("returnCostRmb", amazonReturnCostRmb + returnCostByRateRmb);
+const returnCostRmb = readOrCalc(
+  "returnCostRmb",
+  amazonReturnCostRmb + returnCostByRateRmb
+);
 
 // 运输方式右边显示下面的价格(RMB)
 const expressFee = readOrCalc("expressFee", expressTotalPrice);
@@ -1714,20 +1726,28 @@ const seaFee = readOrCalc("seaFee", seaTotalPrice);
 const warehouseRmb = warehouseUsd * exchangeRate;
 const deliveryRmb = deliveryUsd * exchangeRate;
 
-// 利润 =（销售价-分销价利润）- 对应运费 - FBA - 佣金 - 总退货成本 - 仓租 - 配送+分拨 - 广告费
+// B = FBA费用 + 佣金 + 退货成本 + 仓租 + 配送+分拨 + 广告费
+const B = fbaFeeRmb + commissionRmb + returnCostRmb + warehouseRmb + deliveryRmb + adCostRmb;
+
+// A = 对应运输价格(RMB)
+const expressA = expressFee;
+const airA = airFee;
+const seaA = seaFee;
+
+// 利润 = 销售价RMB - 分销价RMB - A - B
 const expressProfit = readOrCalc(
   "expressProfit",
-  profitSellDiff - expressFee - fbaFeeRmb - commissionRmb - returnCostRmb - warehouseRmb - deliveryRmb - adCostRmb
+  sellingPriceRmb - fenxiaoPrice - expressA - B
 );
 
 const airProfit = readOrCalc(
   "airProfit",
-  profitSellDiff - airFee - fbaFeeRmb - commissionRmb - returnCostRmb - warehouseRmb - deliveryRmb - adCostRmb
+  sellingPriceRmb - fenxiaoPrice - airA - B
 );
 
 const seaProfit = readOrCalc(
   "seaProfit",
-  profitSellDiff - seaFee - fbaFeeRmb - commissionRmb - returnCostRmb - warehouseRmb - deliveryRmb - adCostRmb
+  sellingPriceRmb - fenxiaoPrice - seaA - B
 );
 
 // 利润率 = 利润 / 销售价RMB

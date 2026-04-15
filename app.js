@@ -897,31 +897,64 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
       background: #e3e3e3 !important;
       white-space: nowrap;
     }
-    .input,
-    .textarea {
-      width: 100%;
-      box-sizing: border-box;
-      height: 30px;
-      border: 1px solid #9a9a9a;
-      background: #f8f8f8;
-      padding: 4px 8px;
-      font-size: 14px;
-    }
-    .textarea {
-      height: 90px;
-      resize: vertical;
-      padding-top: 6px;
-    }
+.input,
+.textarea {
+  width: 100%;
+  box-sizing: border-box;
+  height: 30px;
+  border: 1px solid #9a9a9a;
+  background: #ffffff;
+  padding: 4px 8px;
+  font-size: 14px;
+}
+
+.textarea {
+  height: 96px;
+  resize: vertical;
+  padding-top: 6px;
+}
+
+/* 手动填写保持白底 */
+.calc {
+  background: #ffffff !important;
+}
+
+/* 自动计算结果用浅蓝底 */
 .readonly-red {
   border: 1px solid #ff6b6b;
-  background: #ededed;
+  background: #eaf4ff !important;
   color: #222;
 }
 
 .readonly-gray {
-  border: 1px solid #d8d8d8;
-  background: #f7f7f7;
+  border: 1px solid #c8d9ee;
+  background: #eaf4ff !important;
   color: #222;
+}
+
+.transport-spacer,
+.p2-spacer {
+  background: #efefef !important;
+}
+
+.p2-note {
+  text-align: left;
+  color: #666;
+  font-size: 13px;
+  padding-left: 12px;
+  background: #efefef !important;
+}
+  .competitor-table .input {
+  height: 32px;
+}
+
+.competitor-table th,
+.competitor-table td {
+  vertical-align: middle;
+}
+
+.competitor-table .label {
+  width: 110px;
 }
     .photo-box {
       height: 290px;
@@ -1090,7 +1123,7 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
   <td class="label">分销价*</td>
   <td><input class="input calc" type="number" step="0.001" name="fenxiaoPrice" id="fenxiaoPrice" value="${esc(row.fenxiaoPrice || "")}" /></td>
   <td class="label">广告费(%)</td>
-  <td><input class="input calc" type="number" step="0.001" name="adRate" id="adRate" value="${esc(row.adRate || "15")}" /></td>
+  <td><input class="input calc" type="number" step="0.001" name="adRate" id="adRate" value="${esc(row.adRate || "10")}" /></td>
 </tr>
           <tr>
             <td class="label">分销减采购成本利润*</td>
@@ -1115,26 +1148,26 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
   <td><input class="input calc" type="number" step="0.001" name="storageRateUsd" id="storageRateUsd" value="${esc(row.storageRateUsd || "0.78")}" /></td>
   </tr>
 
-          <tr>
-            <td class="label">备注</td>
-            <td colspan="3"><textarea class="textarea" name="remark" id="remark">${esc(row.remark || "")}</textarea></td>
-          </tr>
+         <tr>
+  <td class="label">备注</td>
+  <td colspan="4"><textarea class="textarea" name="remark" id="remark">${esc(row.remark || "")}</textarea></td>
+</tr>
         </table>
       </div>
 
       <div class="white-gap"></div>
 
       <div class="section">
-        <table class="layout">
-          <colgroup>
-            <col style="width: 90px;">
-            <col style="width: 240px;">
-            <col style="width: 60px;">
-            <col style="width: 240px;">
-            <col style="width: 240px;">
-            <col style="width: 240px;">
-            <col style="width: 240px;">
-          </colgroup>
+       <table class="layout">
+  <colgroup>
+    <col style="width: 90px;">
+    <col style="width: 240px;">
+    <col style="width: 70px;">
+    <col style="width: 220px;">
+    <col style="width: 220px;">
+    <col style="width: 220px;">
+    <col style="width: 220px;">
+  </colgroup>
           <tr>
             <td class="label">包装方式*</td>
             <td><input class="input" type="text" name="packageType" id="packageType" value="${esc(row.packageType || "")}" /></td>
@@ -1166,62 +1199,66 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
           </tr>
 
   <tr>
-  <td class="label">尺寸分段*</td>
-  <td>
-    <input type="hidden" name="sizeTier" id="sizeTier" value="${esc(row.sizeTier || "")}" />
-    <input class="input readonly-gray" type="text" id="sizeTierText" value="${esc(serverSizeTierLabel(row.sizeTier || ""))}" readonly />
-  </td>
-  <td class="money-tag">自动识别</td>
-  <td colspan="4"></td>
-</tr>
-          
-        </table>
+    <td class="label">尺寸分段*</td>
+    <td colspan="2">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <input type="hidden" name="sizeTier" id="sizeTier" value="${esc(row.sizeTier || "")}" />
+        <input class="input readonly-gray" type="text" id="sizeTierText" value="${esc(serverSizeTierLabel(row.sizeTier || ""))}" readonly style="flex:1;" />
+        <span class="money-tag" style="min-width:70px;">自动识别</span>
+      </div>
+    </td>
+    <td class="p2-note" colspan="4">根据包装后尺寸与实重自动判断尺寸分段</td>
+  </tr>
+</table>
       </div>
 
       <div class="white-gap"></div>
 
       <div class="section">
-        <table class="layout">
-          <colgroup>
-            <col style="width: 90px;">
-            <col style="width: 240px;">
-            <col style="width: 100px;">
-            <col style="width: 240px;">
-            <col style="width: 170px;">
-            <col style="width: 240px;">
-            <col style="width: 170px;">
-            <col style="width: 170px;">
-          </colgroup>
+<table class="layout">
+  <colgroup>
+    <col style="width: 90px;">
+    <col style="width: 190px;">
+    <col style="width: 150px;">
+    <col style="width: 170px;">
+    <col style="width: 150px;">
+    <col style="width: 170px;">
+    <col style="width: 150px;">
+    <col style="width: 170px;">
+  </colgroup>
 
-          <tr>
-            <td rowspan="4" class="left-title">运输方式</td>
-            <th></th><th></th><th></th><th></th><th></th><th></th><th></th>
-          </tr>
-          <tr>
-          <td class="label">快递费(RMB)</td>
-          <td><input class="input readonly-red" type="number" step="0.001" name="expressFee" id="expressFee" value="${esc(row.expressFee || "")}" /></td>
-          <td class="money-tag" style="text-align:right;">利润(RMB)</td>
-          <td><input class="input readonly-red" type="number" step="0.001" name="expressProfit" id="expressProfit" value="${esc(row.expressProfit || "")}" /></td>
-          <td class="label" colspan="2">利润率(%)*</td>
-          <td><input class="input readonly-red" type="number" step="0.001" name="expressProfitRate" id="expressProfitRate" value="${esc(row.expressProfitRate || "")}" /></td>
-          </tr>
-          <tr>
-          <td class="label">空运费(RMB)</td>
-          <td><input class="input readonly-red" type="number" step="0.001" name="airFee" id="airFee" value="${esc(row.airFee || "")}" /></td>
-          <td class="money-tag" style="text-align:right;">利润(RMB)</td>
-          <td><input class="input readonly-red" type="number" step="0.001" name="airProfit" id="airProfit" value="${esc(row.airProfit || "")}" /></td>
-          <td class="label" colspan="2">利润率(%)*</td>
-          <td><input class="input readonly-red" type="number" step="0.001" name="airProfitRate" id="airProfitRate" value="${esc(row.airProfitRate || "")}" /></td>
-          </tr>
-          <tr>
-            <td class="label">海运费(RMB)</td>
-            <td><input class="input readonly-red" type="number" step="0.001" name="seaFee" id="seaFee" value="${esc(row.seaFee || "")}" /></td>
-            <td class="money-tag" style="text-align:right;">利润(RMB)</td>
-            <td><input class="input readonly-red" type="number" step="0.001" name="seaProfit" id="seaProfit" value="${esc(row.seaProfit || "")}" /></td>
-            <td class="label" colspan="2">利润率(%)*</td>
-            <td><input class="input readonly-red" type="number" step="0.001" name="seaProfitRate" id="seaProfitRate" value="${esc(row.seaProfitRate || "")}" /></td>
-          </tr>
-        </table>
+  <tr>
+    <td rowspan="4" class="left-title">运输方式</td>
+    <th></th><th></th><th></th><th></th><th></th><th></th><th></th>
+  </tr>
+  <tr>
+    <td class="label">快递费(RMB)</td>
+    <td><input class="input readonly-red" type="number" step="0.001" name="expressFee" id="expressFee" value="${esc(row.expressFee || "")}" /></td>
+    <td class="label">利润(RMB)</td>
+    <td><input class="input readonly-red" type="number" step="0.001" name="expressProfit" id="expressProfit" value="${esc(row.expressProfit || "")}" /></td>
+    <td class="label">利润率(%)*</td>
+    <td><input class="input readonly-red" type="number" step="0.001" name="expressProfitRate" id="expressProfitRate" value="${esc(row.expressProfitRate || "")}" /></td>
+    <td class="transport-spacer" colspan="1"></td>
+  </tr>
+  <tr>
+    <td class="label">空运费(RMB)</td>
+    <td><input class="input readonly-red" type="number" step="0.001" name="airFee" id="airFee" value="${esc(row.airFee || "")}" /></td>
+    <td class="label">利润(RMB)</td>
+    <td><input class="input readonly-red" type="number" step="0.001" name="airProfit" id="airProfit" value="${esc(row.airProfit || "")}" /></td>
+    <td class="label">利润率(%)*</td>
+    <td><input class="input readonly-red" type="number" step="0.001" name="airProfitRate" id="airProfitRate" value="${esc(row.airProfitRate || "")}" /></td>
+    <td class="transport-spacer" colspan="1"></td>
+  </tr>
+  <tr>
+    <td class="label">海运费(RMB)</td>
+    <td><input class="input readonly-red" type="number" step="0.001" name="seaFee" id="seaFee" value="${esc(row.seaFee || "")}" /></td>
+    <td class="label">利润(RMB)</td>
+    <td><input class="input readonly-red" type="number" step="0.001" name="seaProfit" id="seaProfit" value="${esc(row.seaProfit || "")}" /></td>
+    <td class="label">利润率(%)*</td>
+    <td><input class="input readonly-red" type="number" step="0.001" name="seaProfitRate" id="seaProfitRate" value="${esc(row.seaProfitRate || "")}" /></td>
+    <td class="transport-spacer" colspan="1"></td>
+  </tr>
+</table>
 
         <table class="layout">
           <colgroup>
@@ -1313,65 +1350,74 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
 
       <!-- 竞品区 START -->
 <div class="section">
-  <table class="layout">
+  <table class="layout competitor-table">
     <tr>
-      <td colspan="5" class="title-bar">竞品信息</td>
+      <td colspan="4" class="title-bar">竞品信息</td>
     </tr>
 
     <tr>
       <th>竞品</th>
       <th>名称</th>
       <th>链接</th>
-      <th>图片</th>
       <th>价格</th>
     </tr>
 
-    <tr>
-      <td class="label">竞品1</td>
-      <td><input class="input" name="competitor1Name" id="competitor1Name" value="${esc(row.competitor1Name||"")}" /></td>
-      <td><input class="input" name="competitor1Link" id="competitor1Link" value="${esc(row.competitor1Link||"")}" /></td>
-      <td><input class="input" name="competitor1Image" id="competitor1Image" value="${esc(row.competitor1Image||"")}" /></td>
-      <td><input class="input" name="competitor1Price" id="competitor1Price" value="${esc(row.competitor1Price||"")}" /></td>
-    </tr>
+ <tr>
+  <td class="label">竞品1</td>
+  <td><input class="input" name="competitor1Name" id="competitor1Name" value="${esc(row.competitor1Name||"")}" /></td>
+  <td><input class="input" name="competitor1Link" id="competitor1Link" value="${esc(row.competitor1Link||"")}" /></td>
+  <td>
+    <input class="input" name="competitor1Price" id="competitor1Price" value="${esc(row.competitor1Price||"")}" />
+    <input type="hidden" name="competitor1Image" id="competitor1Image" value="${esc(row.competitor1Image||"")}" />
+  </td>
+</tr>
 
-    <tr>
-      <td class="label">竞品2</td>
-      <td><input class="input" name="competitor2Name" id="competitor2Name" value="${esc(row.competitor2Name||"")}" /></td>
-      <td><input class="input" name="competitor2Link" id="competitor2Link" value="${esc(row.competitor2Link||"")}" /></td>
-      <td><input class="input" name="competitor2Image" id="competitor2Image" value="${esc(row.competitor2Image||"")}" /></td>
-      <td><input class="input" name="competitor2Price" id="competitor2Price" value="${esc(row.competitor2Price||"")}" /></td>
-    </tr>
+<tr>
+  <td class="label">竞品2</td>
+  <td><input class="input" name="competitor2Name" id="competitor2Name" value="${esc(row.competitor2Name||"")}" /></td>
+  <td><input class="input" name="competitor2Link" id="competitor2Link" value="${esc(row.competitor2Link||"")}" /></td>
+  <td>
+    <input class="input" name="competitor2Price" id="competitor2Price" value="${esc(row.competitor2Price||"")}" />
+    <input type="hidden" name="competitor2Image" id="competitor2Image" value="${esc(row.competitor2Image||"")}" />
+  </td>
+</tr>
 
     <tr>
       <td class="label">竞品3</td>
       <td><input class="input" name="competitor3Name" id="competitor3Name" value="${esc(row.competitor3Name||"")}" /></td>
       <td><input class="input" name="competitor3Link" id="competitor3Link" value="${esc(row.competitor3Link||"")}" /></td>
-      <td><input class="input" name="competitor3Image" id="competitor3Image" value="${esc(row.competitor3Image||"")}" /></td>
-      <td><input class="input" name="competitor3Price" id="competitor3Price" value="${esc(row.competitor3Price||"")}" /></td>
+      <td>
+        <input class="input" name="competitor3Price" id="competitor3Price" value="${esc(row.competitor3Price||"")}" />
+        <input type="hidden" name="competitor3Image" id="competitor3Image" value="${esc(row.competitor3Image||"")}" />
+      </td>
     </tr>
 
     <tr>
   <td class="label">竞品4</td>
   <td><input class="input" name="competitor4Name" id="competitor4Name" value="${esc(row.competitor4Name||"")}" /></td>
   <td><input class="input" name="competitor4Link" id="competitor4Link" value="${esc(row.competitor4Link||"")}" /></td>
-  <td><input class="input" name="competitor4Image" id="competitor4Image" value="${esc(row.competitor4Image||"")}" /></td>
-  <td><input class="input" name="competitor4Price" id="competitor4Price" value="${esc(row.competitor4Price||"")}" /></td>
+  <td>
+    <input class="input" name="competitor4Price" id="competitor4Price" value="${esc(row.competitor4Price||"")}" />
+    <input type="hidden" name="competitor4Image" id="competitor4Image" value="${esc(row.competitor4Image||"")}" />
+  </td>
 </tr>
 
 <tr>
   <td class="label">竞品5</td>
   <td><input class="input" name="competitor5Name" id="competitor5Name" value="${esc(row.competitor5Name||"")}" /></td>
   <td><input class="input" name="competitor5Link" id="competitor5Link" value="${esc(row.competitor5Link||"")}" /></td>
-  <td><input class="input" name="competitor5Image" id="competitor5Image" value="${esc(row.competitor5Image||"")}" /></td>
-  <td><input class="input" name="competitor5Price" id="competitor5Price" value="${esc(row.competitor5Price||"")}" /></td>
+  <td>
+    <input class="input" name="competitor5Price" id="competitor5Price" value="${esc(row.competitor5Price||"")}" />
+    <input type="hidden" name="competitor5Image" id="competitor5Image" value="${esc(row.competitor5Image||"")}" />
+  </td>
 </tr>
 
-    <tr>
-      <td class="label">自动生成</td>
-      <td colspan="4">
-        <button type="button" class="small-btn" onclick="autoFillCompetitors()">自动生成Amazon竞品链接</button>
-      </td>
-    </tr>
+<tr>
+  <td class="label">自动生成</td>
+  <td colspan="3">
+    <button type="button" class="small-btn" onclick="autoFillCompetitors()">自动生成Amazon竞品链接</button>
+  </td>
+</tr>
   </table>
 </div>
 <!-- 竞品区 END -->

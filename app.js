@@ -385,6 +385,17 @@ db.get("SELECT * FROM users WHERE username = ?", ["dollywu"], (err, row) => {
   }
 });
 
+  db.run(
+  `UPDATE users
+   SET is_admin = 0,
+       approval_status = 'approved'
+   WHERE username = ?`,
+  ["gly123"],
+  (e) => {
+    if (e) console.error("降级 gly123 失败:", e);
+  }
+);
+
 });
   
 app.use(express.urlencoded({ extended: true }));
@@ -1285,13 +1296,13 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
     </tr>
 
     <tr>
-      <td class="label">仓租(USD)</td>
-     <td><input class="input readonly-gray" type="number" step="0.001" name="warehouseUsd" id="warehouseUsd" value="${esc(row.warehouseUsd || "")}" readonly /></td>
+     <td class="label">仓租(RMB)</td>
+<td><input class="input readonly-gray" type="number" step="0.001" name="warehouseUsd" id="warehouseUsd" value="${esc(row.warehouseUsd || "")}" readonly /></td>
 
-      <td class="label">配送+分拨(USD)</td>
-      <td><input class="input calc" type="number" step="0.001" name="deliveryUsd" id="deliveryUsd" value="${esc(row.deliveryUsd || "")}" /></td>
-
-      <td class="label">广告费(RMB)</td>
+<td class="label">配送+分拨(RMB)</td>
+<td><input class="input calc" type="number" step="0.001" name="deliveryUsd" id="deliveryUsd" value="${esc(row.deliveryUsd || "")}" /></td>
+      
+<td class="label">广告费(RMB)</td>
     <td><input class="input readonly-gray" type="number" step="0.001" name="adCostRmb" id="adCostRmb" value="${esc(row.adCostRmb || "")}" readonly /></td>
 
      <td class="label">退货成本(RMB)</td>
@@ -1687,10 +1698,15 @@ const cubicFeet =
     : 0;
 
 const storageRateUsd = num("storageRateUsd") || 0.78;
-const warehouseUsd = readOrCalc("warehouseUsd", cubicFeet * storageRateUsd);
 
-// 配送+分拨：手动录入
-const deliveryUsd = num("deliveryUsd");
+// 仓租显示为 RMB：体积(cubic feet) * 仓储费率 * 实时汇率
+const warehouseRmb = readOrCalc(
+  "warehouseUsd",
+  cubicFeet * storageRateUsd * exchangeRate
+);
+
+// 配送+分拨现在也按 RMB 手动录入
+const deliveryRmb = num("deliveryUsd");
 
 const returnRate = num("returnRate");
 
@@ -1723,8 +1739,6 @@ const expressFee = readOrCalc("expressFee", expressTotalPrice);
 const airFee = readOrCalc("airFee", airTotalPrice);
 const seaFee = readOrCalc("seaFee", seaTotalPrice);
 
-const warehouseRmb = warehouseUsd * exchangeRate;
-const deliveryRmb = deliveryUsd * exchangeRate;
 
 // B = FBA费用 + 佣金 + 退货成本 + 仓租 + 配送+分拨 + 广告费
 const B = fbaFeeRmb + commissionRmb + returnCostRmb + warehouseRmb + deliveryRmb + adCostRmb;

@@ -253,9 +253,11 @@ db.serialize(() => {
       volumeWeight6000 TEXT,
       volumeWeight5000 TEXT,
       actualWeight TEXT,
-      lengthCm TEXT,
-      widthCm TEXT,
-      heightCm TEXT,
+lengthCm TEXT,
+widthCm TEXT,
+heightCm TEXT,
+
+productSize TEXT,
 
       expressFee TEXT,
       expressProfit TEXT,
@@ -342,6 +344,7 @@ db.run(`ALTER TABLE products ADD COLUMN competitor5Price TEXT`, ()=>{});
 // 为了按图片规则计算，必须补一个尺寸分段字段
 db.run(`ALTER TABLE products ADD COLUMN sizeTier TEXT`, ()=>{});
 db.run(`ALTER TABLE products ADD COLUMN changedFields TEXT`, ()=>{});
+db.run(`ALTER TABLE products ADD COLUMN productSize TEXT`, ()=>{});
   
 db.run(`
   CREATE TABLE IF NOT EXISTS weekly_reports (
@@ -1157,60 +1160,60 @@ const deletePhotoLink = `<a href="javascript:void(0)" id="deletePhotoBtn" style=
 
       <div class="white-gap"></div>
 
-      <div class="section">
-       <table class="layout">
-  <colgroup>
-    <col style="width: 90px;">
-    <col style="width: 240px;">
-    <col style="width: 70px;">
-    <col style="width: 220px;">
-    <col style="width: 220px;">
-    <col style="width: 220px;">
-    <col style="width: 220px;">
-  </colgroup>
-          <tr>
-            <td class="label">包装方式*</td>
-            <td><input class="input" type="text" name="packageType" id="packageType" value="${esc(row.packageType || "")}" /></td>
-            <td colspan="2" class="title-bar">包装尺寸</td>
-            <th>长/CM</th>
-            <th>宽/CM</th>
-            <th>高/CM</th>
-          </tr>
-          <tr>
-            <td class="label">体积重1(/6000)*</td>
-            <td><input class="input readonly-red" type="number" step="0.001" name="volumeWeight6000" id="volumeWeight6000" value="${esc(row.volumeWeight6000 || "")}" /></td>
-            <td class="money-tag">KG</td>
-            <td></td>
-            <td><input class="input calc" type="number" step="0.001" name="lengthCm" id="lengthCm" value="${esc(row.lengthCm || "")}" /></td>
-            <td><input class="input calc" type="number" step="0.001" name="widthCm" id="widthCm" value="${esc(row.widthCm || "")}" /></td>
-            <td><input class="input calc" type="number" step="0.001" name="heightCm" id="heightCm" value="${esc(row.heightCm || "")}" /></td>
-          </tr>
-          <tr>
-            <td class="label">体积重2(/5000)*</td>
-            <td><input class="input readonly-red" type="number" step="0.001" name="volumeWeight5000" id="volumeWeight5000" value="${esc(row.volumeWeight5000 || "")}" /></td>
-            <td class="money-tag">KG</td>
-            <td colspan="4"></td>
-          </tr>
-          <tr>
-            <td class="label">实重*</td>
-            <td><input class="input" type="number" step="0.001" name="actualWeight" id="actualWeight" value="${esc(row.actualWeight || "")}" /></td>
-            <td class="money-tag">KG</td>
-            <td colspan="4"></td>
-          </tr>
+<div class="section">
+  <table class="layout">
+    <colgroup>
+      <col style="width: 90px;">
+      <col style="width: 150px;">
+      <col style="width: 220px;">
+      <col style="width: 150px;">
+      <col style="width: 220px;">
+      <col style="width: 220px;">
+      <col style="width: 220px;">
+    </colgroup>
 
-  <tr>
-    <td class="label">尺寸分段*</td>
-    <td colspan="2">
-      <div style="display:flex;align-items:center;gap:10px;">
+    <tr>
+      <td rowspan="4" class="left-title">包装</td>
+      <td class="label">包装方式*</td>
+      <td><input class="input" type="text" name="packageType" id="packageType" value="${esc(row.packageType || "")}" /></td>
+      <td></td>
+      <th>长/CM</th>
+      <th>宽/CM</th>
+      <th>高/CM</th>
+    </tr>
+
+    <tr>
+      <td class="label">体积重1(/6000)*</td>
+      <td><input class="input readonly-red" type="number" step="0.001" name="volumeWeight6000" id="volumeWeight6000" value="${esc(row.volumeWeight6000 || "")}" /></td>
+      <td class="money-tag">KG</td>
+      <td><input class="input calc" type="number" step="0.001" name="lengthCm" id="lengthCm" value="${esc(row.lengthCm || "")}" /></td>
+      <td><input class="input calc" type="number" step="0.001" name="widthCm" id="widthCm" value="${esc(row.widthCm || "")}" /></td>
+      <td><input class="input calc" type="number" step="0.001" name="heightCm" id="heightCm" value="${esc(row.heightCm || "")}" /></td>
+    </tr>
+
+    <tr>
+      <td class="label">体积重2(/5000)*</td>
+      <td><input class="input readonly-red" type="number" step="0.001" name="volumeWeight5000" id="volumeWeight5000" value="${esc(row.volumeWeight5000 || "")}" /></td>
+      <td class="money-tag">KG</td>
+      <td class="label">产品尺寸</td>
+      <td colspan="3">
+        <input class="input" type="text" name="productSize" id="productSize" value="${esc(row.productSize || "")}" />
+      </td>
+    </tr>
+
+    <tr>
+      <td class="label">实重*</td>
+      <td><input class="input" type="number" step="0.001" name="actualWeight" id="actualWeight" value="${esc(row.actualWeight || "")}" /></td>
+      <td class="money-tag">KG</td>
+      <td class="label">尺寸分段*</td>
+      <td colspan="3">
         <input type="hidden" name="sizeTier" id="sizeTier" value="${esc(row.sizeTier || "")}" />
-        <input class="input readonly-gray" type="text" id="sizeTierText" value="${esc(serverSizeTierLabel(row.sizeTier || ""))}" readonly style="flex:1;" />
-        <span class="money-tag" style="min-width:70px;">自动识别</span>
-      </div>
-    </td>
-    <td class="p2-note" colspan="4">根据包装后尺寸与实重自动判断尺寸分段</td>
-  </tr>
-</table>
-      </div>
+        <input class="input readonly-gray" type="text" id="sizeTierText" value="${esc(serverSizeTierLabel(row.sizeTier || ""))}" readonly />
+      </td>
+    </tr>
+  </table>
+</div>
+
 
       <div class="white-gap"></div>
 
@@ -2195,13 +2198,13 @@ app.post("/save", checkLogin, upload.single("photo"), (req, res) => {
 
     d.productCode = autoCode;
 
-    const sql = `
-    INSERT INTO products (
+const sql = `
+INSERT INTO products (
   formName, productName, productCode, exchangeRate, purchaseCost, commissionRate,
   fenxiaoPrice, adRate, profitCostDiff, profitRate1,
   sellingPriceUsd, sellingPriceRmb, profitSellDiff, profitRate2,
   remark, packageType,
-  volumeWeight6000, volumeWeight5000, actualWeight, lengthCm, widthCm, heightCm, sizeTier,
+  volumeWeight6000, volumeWeight5000, actualWeight, lengthCm, widthCm, heightCm, productSize, sizeTier,
   expressFee, expressProfit, expressProfitRate,
   airFee, airProfit, airProfitRate,
   seaFee, seaProfit, seaProfitRate,
@@ -2209,13 +2212,13 @@ app.post("/save", checkLogin, upload.single("photo"), (req, res) => {
   airWeightQty, airUnitPrice, airTax, airTotalPrice,
   seaWeightQty, seaUnitPrice, seaTax, seaTotalPrice,
   fbaFeeRmb, commissionRmb, returnCostRmb, returnRate, warehouseUsd, deliveryUsd, adCostRmb,
-storageRateUsd, amazonReturnCostRmb, returnCostByRateRmb,
-competitor1Name, competitor1Link, competitor1Image, competitor1Price,
-competitor2Name, competitor2Link, competitor2Image, competitor2Price,
-competitor3Name, competitor3Link, competitor3Image, competitor3Price,
-competitor4Name, competitor4Link, competitor4Image, competitor4Price,
-competitor5Name, competitor5Link, competitor5Image, competitor5Price,
-changedFields,
+  storageRateUsd, amazonReturnCostRmb, returnCostByRateRmb,
+  competitor1Name, competitor1Link, competitor1Image, competitor1Price,
+  competitor2Name, competitor2Link, competitor2Image, competitor2Price,
+  competitor3Name, competitor3Link, competitor3Image, competitor3Price,
+  competitor4Name, competitor4Link, competitor4Image, competitor4Price,
+  competitor5Name, competitor5Link, competitor5Image, competitor5Price,
+  changedFields,
   photoPath, ownerUserId, ownerUsername, lastEditedByUserId, lastEditedByUsername,
   createdAt, updatedAt
 ) VALUES (
@@ -2223,7 +2226,7 @@ changedFields,
   ?, ?, ?, ?,
   ?, ?, ?, ?,
   ?, ?,
-  ?, ?, ?, ?, ?, ?, ?,
+  ?, ?, ?, ?, ?, ?, ?, ?,
   ?, ?, ?,
   ?, ?, ?,
   ?, ?, ?,
@@ -2237,13 +2240,13 @@ changedFields,
   ?, ?, ?, ?,
   ?, ?, ?, ?,
   ?, ?, ?, ?,
- ?,
-?, ?, ?, ?, ?,
-datetime('now','localtime'), datetime('now','localtime')
+  ?,
+  ?, ?, ?, ?, ?,
+  datetime('now','localtime'), datetime('now','localtime')
 )
-    `;
+`;
 
-   const values = [
+const values = [
   d.formName || "",
   d.productName || "",
   d.productCode || "",
@@ -2266,6 +2269,7 @@ datetime('now','localtime'), datetime('now','localtime')
   d.lengthCm || "",
   d.widthCm || "",
   d.heightCm || "",
+  d.productSize || "",
   d.sizeTier || "",
   d.expressFee || "",
   d.expressProfit || "",
@@ -2295,30 +2299,30 @@ datetime('now','localtime'), datetime('now','localtime')
   d.warehouseUsd || "",
   d.deliveryUsd || "",
   d.adCostRmb || "",
-d.storageRateUsd || "0.78",
-d.amazonReturnCostRmb || "",
-d.returnCostByRateRmb || "",
+  d.storageRateUsd || "0.78",
+  d.amazonReturnCostRmb || "",
+  d.returnCostByRateRmb || "",
   d.competitor1Name || "",
-d.competitor1Link || "",
-d.competitor1Image || "",
-d.competitor1Price || "",
-d.competitor2Name || "",
-d.competitor2Link || "",
-d.competitor2Image || "",
-d.competitor2Price || "",
-d.competitor3Name || "",
-d.competitor3Link || "",
-d.competitor3Image || "",
-d.competitor3Price || "",
-d.competitor4Name || "",
-d.competitor4Link || "",
-d.competitor4Image || "",
-d.competitor4Price || "",
-d.competitor5Name || "",
-d.competitor5Link || "",
-d.competitor5Image || "",
-d.competitor5Price || "",
-"[]",
+  d.competitor1Link || "",
+  d.competitor1Image || "",
+  d.competitor1Price || "",
+  d.competitor2Name || "",
+  d.competitor2Link || "",
+  d.competitor2Image || "",
+  d.competitor2Price || "",
+  d.competitor3Name || "",
+  d.competitor3Link || "",
+  d.competitor3Image || "",
+  d.competitor3Price || "",
+  d.competitor4Name || "",
+  d.competitor4Link || "",
+  d.competitor4Image || "",
+  d.competitor4Price || "",
+  d.competitor5Name || "",
+  d.competitor5Link || "",
+  d.competitor5Image || "",
+  d.competitor5Price || "",
+  "[]",
   photoPath,
   u.id,
   u.username,
@@ -2958,7 +2962,7 @@ for(let k in d){
     fenxiaoPrice = ?, adRate = ?, profitCostDiff = ?, profitRate1 = ?,
     sellingPriceUsd = ?, sellingPriceRmb = ?, profitSellDiff = ?, profitRate2 = ?,
     remark = ?, packageType = ?,
-    volumeWeight6000 = ?, volumeWeight5000 = ?, actualWeight = ?, lengthCm = ?, widthCm = ?, heightCm = ?, sizeTier = ?,
+    volumeWeight6000 = ?, volumeWeight5000 = ?, actualWeight = ?, lengthCm = ?, widthCm = ?, heightCm = ?, productSize = ?, sizeTier = ?,
     expressFee = ?, expressProfit = ?, expressProfitRate = ?,
     airFee = ?, airProfit = ?, airProfitRate = ?,
     seaFee = ?, seaProfit = ?, seaProfitRate = ?,
@@ -2994,13 +2998,14 @@ for(let k in d){
   d.profitRate2 || "",
   d.remark || "",
   d.packageType || "",
-  d.volumeWeight6000 || "",
-  d.volumeWeight5000 || "",
-  d.actualWeight || "",
-  d.lengthCm || "",
-  d.widthCm || "",
-  d.heightCm || "",
-  d.sizeTier || "",
+d.volumeWeight6000 || "",
+d.volumeWeight5000 || "",
+d.actualWeight || "",
+d.lengthCm || "",
+d.widthCm || "",
+d.heightCm || "",
+d.productSize || "",
+d.sizeTier || "",
   d.expressFee || "",
   d.expressProfit || "",
   d.expressProfitRate || "",
